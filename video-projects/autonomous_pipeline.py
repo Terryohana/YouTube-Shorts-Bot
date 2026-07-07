@@ -100,9 +100,15 @@ def render_short(image_path, audio_path, output_path):
 
 async def generate_audio(text, output_path):
     print("Generating audio via Edge-TTS...")
-    voice = "en-US-GuyNeural"
-    communicate = edge_tts.Communicate(text, voice, rate="+10%")
-    await communicate.save(output_path)
+    try:
+        voice = "en-US-GuyNeural"
+        communicate = edge_tts.Communicate(text, voice, rate="+10%")
+        await communicate.save(output_path)
+    except Exception as e:
+        print(f"Edge-TTS failed ({e}), falling back to gTTS...")
+        from gtts import gTTS
+        tts = gTTS(text=text, lang='en', tld='us')
+        tts.save(output_path)
 
 def upload_video(video_path, title, description):
     print("Uploading to YouTube...")
