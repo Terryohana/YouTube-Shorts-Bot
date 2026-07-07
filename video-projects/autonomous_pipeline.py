@@ -20,7 +20,10 @@ def clean_text(html_text):
 
 def get_top_topic():
     print("Fetching RSS from Android Police...")
-    feed = feedparser.parse("https://www.androidpolice.com/feed/")
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"}
+    res = requests.get("https://www.androidpolice.com/feed/", headers=headers, timeout=10)
+    res.raise_for_status()
+    feed = feedparser.parse(res.text)
     
     # Check if there is an unused topic file
     used_topics = []
