@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HyperFrames Motion Graphics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: #050510;
+    font-family: 'Inter', sans-serif;
+    position: relative;
+}
+
+.morph-bg {
+    position: absolute;
+    width: 100%; height: 100%;
+    z-index: 0;
+    filter: blur(120px);
+    opacity: 0.5;
+}
+.blob {
+    position: absolute;
+    border-radius: 50%;
+}
+.blob-1 { width: 600px; height: 600px; top: -100px; left: -100px; background: #6366f1; }
+.blob-2 { width: 500px; height: 500px; bottom: -100px; right: -100px; background: #ec4899; }
+.blob-3 { width: 400px; height: 400px; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #14b8a6; }
+
+.particle-layer {
+    position: absolute;
+    width: 100%; height: 100%;
+    z-index: 1;
+}
+.particle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+}
+
+.grid-overlay {
+    position: absolute;
+    width: 100%; height: 100%;
+    z-index: 1;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.6;
+}
+
+.visual-layer {
+    position: absolute;
+    width: 100%; height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.ring {
+    position: absolute;
+    border: 3px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    opacity: 0;
+}
+
+.bar-group {
+    position: absolute;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    opacity: 0;
+}
+.bar {
+    width: 20px;
+    border-radius: 4px 4px 0 0;
+    transform-origin: bottom;
+}
+
+.dot-grid {
+    position: absolute;
+    display: grid;
+    gap: 20px;
+    opacity: 0;
+}
+.dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    opacity: 0;
+}
+
+.line-element {
+    position: absolute;
+    height: 3px;
+    border-radius: 2px;
+    transform-origin: left;
+    transform: scaleX(0);
+    opacity: 0;
+}
+
+.text-layer {
+    position: absolute;
+    width: 100%; height: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 100px 200px;
+}
+
+.chunk-container {
+    position: absolute;
+    text-align: center;
+    opacity: 0;
+}
+
+.chunk-text {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 88px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.15;
+    text-shadow: 0 0 60px rgba(0,0,0,0.8);
+    letter-spacing: -1px;
+}
+
+.chunk-text .word {
+    display: inline-block;
+    margin: 0 8px;
+    opacity: 0.15;
+    transform: translateY(20px);
+}
+
+.highlight-bar {
+    height: 6px;
+    border-radius: 3px;
+    margin-top: 20px;
+    transform: scaleX(0);
+    transform-origin: left;
+}
+
+.hud-top-left {
+    position: absolute;
+    top: 40px; left: 40px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: rgba(255,255,255,0.3);
+    z-index: 20;
+    letter-spacing: 2px;
+}
+
+.hud-bottom-right {
+    position: absolute;
+    bottom: 40px; right: 40px;
+    z-index: 20;
+}
+
+.subscribe-pill {
+    background: #ef4444;
+    color: white;
+    padding: 16px 32px;
+    border-radius: 50px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    box-shadow: 0 8px 30px rgba(239,68,68,0.4);
+    display: flex; align-items: center; gap: 12px;
+}
+
+.progress-bar-container {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 4px;
+    z-index: 20;
+    background: rgba(255,255,255,0.1);
+}
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6366f1, #ec4899, #f59e0b);
+}
+</style>
+</head>
+<body>
+
+<div class="morph-bg">
+    <div class="blob blob-1" id="blob1"></div>
+    <div class="blob blob-2" id="blob2"></div>
+    <div class="blob blob-3" id="blob3"></div>
+</div>
+
+<div class="particle-layer" id="particleLayer"></div>
+<div class="grid-overlay"></div>
+<div class="visual-layer" id="visualLayer"></div>
+<div class="text-layer" id="textLayer"></div>
+
+<div class="hud-top-left">
+    HYPERFRAMES // MOTION SYSTEM<br>
+    LIVE RENDER &bull; 1080p
+</div>
+
+<div class="hud-bottom-right">
+    <div class="subscribe-pill">
+        <span style="font-size:18px;">🔴</span> SUBSCRIBE
+    </div>
+</div>
+
+<div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<script>
+const CHUNKS = [{"text": "Welcome back to the", "start": 0.0, "duration": 0.8170000000000001, "color": "#dc1818", "visual": "rings", "words": [{"word": "Welcome", "offset": 0.0, "duration": 0.357}, {"word": "back", "offset": 0.357, "duration": 0.204}, {"word": "to", "offset": 0.561, "duration": 0.102}, {"word": "the", "offset": 0.664, "duration": 0.153}]}, {"text": "channel, Android power users", "start": 0.817, "duration": 1.378, "color": "#e61e17", "visual": "bars", "words": [{"word": "channel,", "offset": 0.0, "duration": 0.51}, {"word": "Android", "offset": 0.51, "duration": 0.357}, {"word": "power", "offset": 0.867, "duration": 0.255}, {"word": "users", "offset": 1.123, "duration": 0.255}]}, {"text": "and retro enthusiasts! Today,", "start": 2.195, "duration": 1.5820000000000003, "color": "#df2619", "visual": "dots", "words": [{"word": "and", "offset": 0.0, "duration": 0.153}, {"word": "retro", "offset": 0.153, "duration": 0.255}, {"word": "enthusiasts!", "offset": 0.408, "duration": 0.766}, {"word": "Today,", "offset": 1.174, "duration": 0.408}]}, {"text": "we are diving deep", "start": 3.777, "duration": 0.7649999999999997, "color": "#db311e", "visual": "lines", "words": [{"word": "we", "offset": 0.0, "duration": 0.102}, {"word": "are", "offset": 0.102, "duration": 0.153}, {"word": "diving", "offset": 0.255, "duration": 0.306}, {"word": "deep", "offset": 0.561, "duration": 0.204}]}, {"text": "into what might be", "start": 4.543, "duration": 0.7650000000000006, "color": "#d03e29", "visual": "grid", "words": [{"word": "into", "offset": 0.0, "duration": 0.204}, {"word": "what", "offset": 0.204, "duration": 0.204}, {"word": "might", "offset": 0.408, "duration": 0.255}, {"word": "be", "offset": 0.663, "duration": 0.102}]}, {"text": "the coolest crossover between", "start": 5.308, "duration": 1.327, "color": "#dc4629", "visual": "arcs", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "coolest", "offset": 0.153, "duration": 0.357}, {"word": "crossover", "offset": 0.511, "duration": 0.459}, {"word": "between", "offset": 0.97, "duration": 0.357}]}, {"text": "1990s nostalgia and modern", "start": 6.635, "duration": 1.1740000000000004, "color": "#dc431e", "visual": "rings", "words": [{"word": "1990s", "offset": 0.0, "duration": 0.255}, {"word": "nostalgia", "offset": 0.255, "duration": 0.459}, {"word": "and", "offset": 0.715, "duration": 0.153}, {"word": "modern", "offset": 0.868, "duration": 0.306}]}, {"text": "smartphone technology that we", "start": 7.809, "duration": 1.3270000000000008, "color": "#ee5326", "visual": "bars", "words": [{"word": "smartphone", "offset": 0.0, "duration": 0.51}, {"word": "technology", "offset": 0.51, "duration": 0.51}, {"word": "that", "offset": 1.021, "duration": 0.204}, {"word": "we", "offset": 1.225, "duration": 0.102}]}, {"text": "have seen all year.", "start": 9.136, "duration": 1.0210000000000008, "color": "#e24d19", "visual": "dots", "words": [{"word": "have", "offset": 0.0, "duration": 0.204}, {"word": "seen", "offset": 0.204, "duration": 0.204}, {"word": "all", "offset": 0.408, "duration": 0.153}, {"word": "year.", "offset": 0.562, "duration": 0.459}]}, {"text": "If you grew up", "start": 10.157, "duration": 0.5609999999999999, "color": "#cd440c", "visual": "lines", "words": [{"word": "If", "offset": 0.0, "duration": 0.102}, {"word": "you", "offset": 0.102, "duration": 0.153}, {"word": "grew", "offset": 0.255, "duration": 0.204}, {"word": "up", "offset": 0.459, "duration": 0.102}]}, {"text": "in the late 90s,", "start": 10.718, "duration": 0.766, "color": "#e65a17", "visual": "grid", "words": [{"word": "in", "offset": 0.0, "duration": 0.102}, {"word": "the", "offset": 0.102, "duration": 0.153}, {"word": "late", "offset": 0.256, "duration": 0.204}, {"word": "90s,", "offset": 0.46, "duration": 0.306}]}, {"text": "you almost certainly remember", "start": 11.484, "duration": 1.327, "color": "#d05410", "visual": "arcs", "words": [{"word": "you", "offset": 0.0, "duration": 0.153}, {"word": "almost", "offset": 0.153, "duration": 0.306}, {"word": "certainly", "offset": 0.459, "duration": 0.459}, {"word": "remember", "offset": 0.919, "duration": 0.408}]}, {"text": "the iconic Game Boy", "start": 12.811, "duration": 0.8160000000000007, "color": "#ce580d", "visual": "rings", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "iconic", "offset": 0.153, "duration": 0.306}, {"word": "Game", "offset": 0.459, "duration": 0.204}, {"word": "Boy", "offset": 0.663, "duration": 0.153}]}, {"text": "Camera. It was a", "start": 13.628, "duration": 0.8670000000000009, "color": "#e46b13", "visual": "bars", "words": [{"word": "Camera.", "offset": 0.0, "duration": 0.561}, {"word": "It", "offset": 0.561, "duration": 0.102}, {"word": "was", "offset": 0.663, "duration": 0.153}, {"word": "a", "offset": 0.816, "duration": 0.051}]}, {"text": "weird, wonderful little cartridge", "start": 14.495, "duration": 1.633000000000001, "color": "#e18132", "visual": "dots", "words": [{"word": "weird,", "offset": 0.0, "duration": 0.408}, {"word": "wonderful", "offset": 0.409, "duration": 0.459}, {"word": "little", "offset": 0.868, "duration": 0.306}, {"word": "cartridge", "offset": 1.174, "duration": 0.459}]}, {"text": "with a lens sticking", "start": 16.129, "duration": 0.8670000000000009, "color": "#ed8d34", "visual": "lines", "words": [{"word": "with", "offset": 0.0, "duration": 0.204}, {"word": "a", "offset": 0.204, "duration": 0.051}, {"word": "lens", "offset": 0.255, "duration": 0.204}, {"word": "sticking", "offset": 0.459, "duration": 0.408}]}, {"text": "out of it that", "start": 16.996, "duration": 0.5620000000000012, "color": "#eb881f", "visual": "grid", "words": [{"word": "out", "offset": 0.0, "duration": 0.153}, {"word": "of", "offset": 0.153, "duration": 0.102}, {"word": "it", "offset": 0.255, "duration": 0.102}, {"word": "that", "offset": 0.358, "duration": 0.204}]}, {"text": "turned your Game Boy", "start": 17.558, "duration": 0.8669999999999973, "color": "#e8860f", "visual": "arcs", "words": [{"word": "turned", "offset": 0.0, "duration": 0.306}, {"word": "your", "offset": 0.306, "duration": 0.204}, {"word": "Game", "offset": 0.51, "duration": 0.204}, {"word": "Boy", "offset": 0.714, "duration": 0.153}]}, {"text": "into the world&#39;s lowest-resolution", "start": 18.425, "duration": 1.5829999999999984, "color": "#ee951b", "visual": "rings", "words": [{"word": "into", "offset": 0.0, "duration": 0.204}, {"word": "the", "offset": 0.205, "duration": 0.153}, {"word": "world&#39;s", "offset": 0.358, "duration": 0.357}, {"word": "lowest-resolution", "offset": 0.715, "duration": 0.868}]}, {"text": "digital camera. For years,", "start": 20.008, "duration": 1.4790000000000028, "color": "#e39a27", "visual": "bars", "words": [{"word": "digital", "offset": 0.0, "duration": 0.357}, {"word": "camera.", "offset": 0.357, "duration": 0.561}, {"word": "For", "offset": 0.918, "duration": 0.153}, {"word": "years,", "offset": 1.071, "duration": 0.408}]}, {"text": "keeping those photos alive", "start": 21.488, "duration": 1.1729999999999983, "color": "#d09324", "visual": "dots", "words": [{"word": "keeping", "offset": 0.0, "duration": 0.357}, {"word": "those", "offset": 0.357, "duration": 0.255}, {"word": "photos", "offset": 0.612, "duration": 0.306}, {"word": "alive", "offset": 0.918, "duration": 0.255}]}, {"text": "meant jumping through endless", "start": 22.662, "duration": 1.3260000000000005, "color": "#db9b13", "visual": "lines", "words": [{"word": "meant", "offset": 0.0, "duration": 0.255}, {"word": "jumping", "offset": 0.255, "duration": 0.357}, {"word": "through", "offset": 0.612, "duration": 0.357}, {"word": "endless", "offset": 0.969, "duration": 0.357}]}, {"text": "hoops with obscure hardware,", "start": 23.989, "duration": 1.376999999999999, "color": "#eaaf20", "visual": "grid", "words": [{"word": "hoops", "offset": 0.0, "duration": 0.255}, {"word": "with", "offset": 0.255, "duration": 0.204}, {"word": "obscure", "offset": 0.459, "duration": 0.357}, {"word": "hardware,", "offset": 0.816, "duration": 0.561}]}, {"text": "parallel port cables, or", "start": 25.367, "duration": 1.1739999999999995, "color": "#daa81a", "visual": "arcs", "words": [{"word": "parallel", "offset": 0.0, "duration": 0.408}, {"word": "port", "offset": 0.408, "duration": 0.204}, {"word": "cables,", "offset": 0.612, "duration": 0.459}, {"word": "or", "offset": 1.072, "duration": 0.102}]}, {"text": "weird printer emulators. But", "start": 26.541, "duration": 1.4799999999999969, "color": "#d3ac27", "visual": "rings", "words": [{"word": "weird", "offset": 0.0, "duration": 0.255}, {"word": "printer", "offset": 0.255, "duration": 0.357}, {"word": "emulators.", "offset": 0.612, "duration": 0.715}, {"word": "But", "offset": 1.327, "duration": 0.153}]}, {"text": "today, the game has", "start": 28.021, "duration": 0.9179999999999993, "color": "#dfb70e", "visual": "bars", "words": [{"word": "today,", "offset": 0.0, "duration": 0.408}, {"word": "the", "offset": 0.408, "duration": 0.153}, {"word": "game", "offset": 0.561, "duration": 0.204}, {"word": "has", "offset": 0.765, "duration": 0.153}]}, {"text": "completely changed. Thanks to", "start": 28.94, "duration": 1.5309999999999988, "color": "#e4c835", "visual": "dots", "words": [{"word": "completely", "offset": 0.0, "duration": 0.51}, {"word": "changed.", "offset": 0.51, "duration": 0.612}, {"word": "Thanks", "offset": 1.122, "duration": 0.306}, {"word": "to", "offset": 1.429, "duration": 0.102}]}, {"text": "the team at Epilogue,", "start": 30.471, "duration": 1.0199999999999996, "color": "#e2ca27", "visual": "lines", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "team", "offset": 0.153, "duration": 0.204}, {"word": "at", "offset": 0.357, "duration": 0.102}, {"word": "Epilogue,", "offset": 0.459, "duration": 0.561}]}, {"text": "the authentic Game Boy", "start": 31.492, "duration": 0.9689999999999976, "color": "#d9c934", "visual": "grid", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "authentic", "offset": 0.153, "duration": 0.459}, {"word": "Game", "offset": 0.612, "duration": 0.204}, {"word": "Boy", "offset": 0.816, "duration": 0.153}]}, {"text": "Camera experience is now", "start": 32.461, "duration": 1.0720000000000027, "color": "#e2d51d", "visual": "arcs", "words": [{"word": "Camera", "offset": 0.0, "duration": 0.306}, {"word": "experience", "offset": 0.307, "duration": 0.51}, {"word": "is", "offset": 0.817, "duration": 0.102}, {"word": "now", "offset": 0.919, "duration": 0.153}]}, {"text": "fully available on your", "start": 33.533, "duration": 1.0210000000000008, "color": "#e4dd1e", "visual": "rings", "words": [{"word": "fully", "offset": 0.0, "duration": 0.255}, {"word": "available", "offset": 0.255, "duration": 0.459}, {"word": "on", "offset": 0.715, "duration": 0.102}, {"word": "your", "offset": 0.817, "duration": 0.204}]}, {"text": "Android device, and we", "start": 34.554, "duration": 1.0719999999999956, "color": "#d0d00b", "visual": "bars", "words": [{"word": "Android", "offset": 0.0, "duration": 0.357}, {"word": "device,", "offset": 0.357, "duration": 0.459}, {"word": "and", "offset": 0.817, "duration": 0.153}, {"word": "we", "offset": 0.97, "duration": 0.102}]}, {"text": "are going to break", "start": 35.626, "duration": 0.7650000000000077, "color": "#d6dd0b", "visual": "dots", "words": [{"word": "are", "offset": 0.0, "duration": 0.153}, {"word": "going", "offset": 0.153, "duration": 0.255}, {"word": "to", "offset": 0.408, "duration": 0.102}, {"word": "break", "offset": 0.51, "duration": 0.255}]}, {"text": "down exactly how it", "start": 36.391, "duration": 0.8170000000000002, "color": "#d5e02a", "visual": "lines", "words": [{"word": "down", "offset": 0.0, "duration": 0.204}, {"word": "exactly", "offset": 0.204, "duration": 0.357}, {"word": "how", "offset": 0.562, "duration": 0.153}, {"word": "it", "offset": 0.715, "duration": 0.102}]}, {"text": "works, why it matters,", "start": 37.208, "duration": 1.1730000000000018, "color": "#c9dc12", "visual": "grid", "words": [{"word": "works,", "offset": 0.0, "duration": 0.408}, {"word": "why", "offset": 0.408, "duration": 0.153}, {"word": "it", "offset": 0.561, "duration": 0.102}, {"word": "matters,", "offset": 0.663, "duration": 0.51}]}, {"text": "and how you can", "start": 38.382, "duration": 0.6120000000000019, "color": "#d3ed29", "visual": "arcs", "words": [{"word": "and", "offset": 0.0, "duration": 0.153}, {"word": "how", "offset": 0.153, "duration": 0.153}, {"word": "you", "offset": 0.306, "duration": 0.153}, {"word": "can", "offset": 0.459, "duration": 0.153}]}, {"text": "set it up. So,", "start": 38.994, "duration": 0.8680000000000021, "color": "#b5d416", "visual": "rings", "words": [{"word": "set", "offset": 0.0, "duration": 0.153}, {"word": "it", "offset": 0.153, "duration": 0.102}, {"word": "up.", "offset": 0.256, "duration": 0.357}, {"word": "So,", "offset": 0.613, "duration": 0.255}]}, {"text": "let&#39;s set the stage.", "start": 39.862, "duration": 1.070999999999998, "color": "#bbe11b", "visual": "bars", "words": [{"word": "let&#39;s", "offset": 0.0, "duration": 0.255}, {"word": "set", "offset": 0.255, "duration": 0.153}, {"word": "the", "offset": 0.408, "duration": 0.153}, {"word": "stage.", "offset": 0.561, "duration": 0.51}]}, {"text": "Epilogue is a company", "start": 40.934, "duration": 0.9179999999999993, "color": "#b0db1c", "visual": "dots", "words": [{"word": "Epilogue", "offset": 0.0, "duration": 0.408}, {"word": "is", "offset": 0.408, "duration": 0.102}, {"word": "a", "offset": 0.51, "duration": 0.051}, {"word": "company", "offset": 0.561, "duration": 0.357}]}, {"text": "best known for the", "start": 41.853, "duration": 0.7650000000000006, "color": "#b4e132", "visual": "lines", "words": [{"word": "best", "offset": 0.0, "duration": 0.204}, {"word": "known", "offset": 0.204, "duration": 0.255}, {"word": "for", "offset": 0.459, "duration": 0.153}, {"word": "the", "offset": 0.612, "duration": 0.153}]}, {"text": "GB Operator, a sleek", "start": 42.618, "duration": 0.9699999999999989, "color": "#9bd313", "visual": "grid", "words": [{"word": "GB", "offset": 0.0, "duration": 0.102}, {"word": "Operator,", "offset": 0.102, "duration": 0.561}, {"word": "a", "offset": 0.664, "duration": 0.051}, {"word": "sleek", "offset": 0.715, "duration": 0.255}]}, {"text": "little device that lets", "start": 43.588, "duration": 1.0210000000000008, "color": "#9dd032", "visual": "arcs", "words": [{"word": "little", "offset": 0.0, "duration": 0.306}, {"word": "device", "offset": 0.306, "duration": 0.306}, {"word": "that", "offset": 0.612, "duration": 0.204}, {"word": "lets", "offset": 0.817, "duration": 0.204}]}, {"text": "you play your original", "start": 44.609, "duration": 0.9690000000000012, "color": "#a8ee29", "visual": "rings", "words": [{"word": "you", "offset": 0.0, "duration": 0.153}, {"word": "play", "offset": 0.153, "duration": 0.204}, {"word": "your", "offset": 0.357, "duration": 0.204}, {"word": "original", "offset": 0.561, "duration": 0.408}]}, {"text": "Game Boy, Game Boy", "start": 45.578, "duration": 0.867999999999995, "color": "#88d60c", "visual": "bars", "words": [{"word": "Game", "offset": 0.0, "duration": 0.204}, {"word": "Boy,", "offset": 0.205, "duration": 0.306}, {"word": "Game", "offset": 0.511, "duration": 0.204}, {"word": "Boy", "offset": 0.715, "duration": 0.153}]}, {"text": "Color, and Game Boy", "start": 46.446, "duration": 0.919000000000004, "color": "#83d118", "visual": "dots", "words": [{"word": "Color,", "offset": 0.0, "duration": 0.408}, {"word": "and", "offset": 0.408, "duration": 0.153}, {"word": "Game", "offset": 0.562, "duration": 0.204}, {"word": "Boy", "offset": 0.766, "duration": 0.153}]}, {"text": "Advance cartridges directly on", "start": 47.365, "duration": 1.377999999999993, "color": "#8be919", "visual": "lines", "words": [{"word": "Advance", "offset": 0.0, "duration": 0.357}, {"word": "cartridges", "offset": 0.357, "duration": 0.51}, {"word": "directly", "offset": 0.868, "duration": 0.408}, {"word": "on", "offset": 1.276, "duration": 0.102}]}, {"text": "your PC. It\u2019s a", "start": 48.743, "duration": 0.8170000000000002, "color": "#7fd227", "visual": "grid", "words": [{"word": "your", "offset": 0.0, "duration": 0.204}, {"word": "PC.", "offset": 0.204, "duration": 0.357}, {"word": "It\u2019s", "offset": 0.561, "duration": 0.204}, {"word": "a", "offset": 0.766, "duration": 0.051}]}, {"text": "phenomenal piece of preservation", "start": 49.56, "duration": 1.4789999999999992, "color": "#71ce1a", "visual": "arcs", "words": [{"word": "phenomenal", "offset": 0.0, "duration": 0.51}, {"word": "piece", "offset": 0.51, "duration": 0.255}, {"word": "of", "offset": 0.765, "duration": 0.102}, {"word": "preservation", "offset": 0.867, "duration": 0.612}]}, {"text": "hardware, but the company", "start": 51.04, "duration": 1.2239999999999966, "color": "#62cd0a", "visual": "rings", "words": [{"word": "hardware,", "offset": 0.0, "duration": 0.561}, {"word": "but", "offset": 0.561, "duration": 0.153}, {"word": "the", "offset": 0.714, "duration": 0.153}, {"word": "company", "offset": 0.867, "duration": 0.357}]}, {"text": "isn&#39;t stopping at just", "start": 52.265, "duration": 0.9690000000000012, "color": "#7ef12b", "visual": "bars", "words": [{"word": "isn&#39;t", "offset": 0.0, "duration": 0.255}, {"word": "stopping", "offset": 0.255, "duration": 0.408}, {"word": "at", "offset": 0.663, "duration": 0.102}, {"word": "just", "offset": 0.765, "duration": 0.204}]}, {"text": "playing games. They have", "start": 53.234, "duration": 1.2759999999999962, "color": "#65ee0e", "visual": "dots", "words": [{"word": "playing", "offset": 0.0, "duration": 0.357}, {"word": "games.", "offset": 0.358, "duration": 0.51}, {"word": "They", "offset": 0.868, "duration": 0.204}, {"word": "have", "offset": 1.072, "duration": 0.204}]}, {"text": "officially launched a brand", "start": 54.51, "duration": 1.2250000000000014, "color": "#6eeb29", "visual": "lines", "words": [{"word": "officially", "offset": 0.0, "duration": 0.51}, {"word": "launched", "offset": 0.511, "duration": 0.408}, {"word": "a", "offset": 0.919, "duration": 0.051}, {"word": "brand", "offset": 0.97, "duration": 0.255}]}, {"text": "new application specifically for", "start": 55.735, "duration": 1.4799999999999969, "color": "#75ee3b", "visual": "grid", "words": [{"word": "new", "offset": 0.0, "duration": 0.153}, {"word": "application", "offset": 0.154, "duration": 0.561}, {"word": "specifically", "offset": 0.715, "duration": 0.612}, {"word": "for", "offset": 1.327, "duration": 0.153}]}, {"text": "Android called &quot;Flashback.&quot; This", "start": 57.216, "duration": 1.4799999999999969, "color": "#57da22", "visual": "arcs", "words": [{"word": "Android", "offset": 0.0, "duration": 0.357}, {"word": "called", "offset": 0.357, "duration": 0.306}, {"word": "&quot;Flashback.&quot;", "offset": 0.663, "duration": 0.612}, {"word": "This", "offset": 1.276, "duration": 0.204}]}, {"text": "isn&#39;t an emulator that", "start": 58.696, "duration": 0.9690000000000012, "color": "#4dde1a", "visual": "rings", "words": [{"word": "isn&#39;t", "offset": 0.0, "duration": 0.255}, {"word": "an", "offset": 0.255, "duration": 0.102}, {"word": "emulator", "offset": 0.357, "duration": 0.408}, {"word": "that", "offset": 0.765, "duration": 0.204}]}, {"text": "just slaps a green", "start": 59.665, "duration": 0.7660000000000053, "color": "#42e512", "visual": "bars", "words": [{"word": "just", "offset": 0.0, "duration": 0.204}, {"word": "slaps", "offset": 0.205, "duration": 0.255}, {"word": "a", "offset": 0.46, "duration": 0.051}, {"word": "green", "offset": 0.511, "duration": 0.255}]}, {"text": "filter over your high-end", "start": 60.431, "duration": 1.1230000000000047, "color": "#33cd0e", "visual": "dots", "words": [{"word": "filter", "offset": 0.0, "duration": 0.306}, {"word": "over", "offset": 0.306, "duration": 0.204}, {"word": "your", "offset": 0.51, "duration": 0.204}, {"word": "high-end", "offset": 0.715, "duration": 0.408}]}, {"text": "smartphone camera. No, this", "start": 61.554, "duration": 1.5309999999999988, "color": "#50f031", "visual": "lines", "words": [{"word": "smartphone", "offset": 0.0, "duration": 0.51}, {"word": "camera.", "offset": 0.51, "duration": 0.561}, {"word": "No,", "offset": 1.072, "duration": 0.255}, {"word": "this", "offset": 1.327, "duration": 0.204}]}, {"text": "is an app designed", "start": 63.085, "duration": 0.7650000000000006, "color": "#40cf2b", "visual": "grid", "words": [{"word": "is", "offset": 0.0, "duration": 0.102}, {"word": "an", "offset": 0.102, "duration": 0.102}, {"word": "app", "offset": 0.204, "duration": 0.153}, {"word": "designed", "offset": 0.357, "duration": 0.408}]}, {"text": "to interface directly with", "start": 63.851, "duration": 1.1729999999999876, "color": "#40d830", "visual": "arcs", "words": [{"word": "to", "offset": 0.0, "duration": 0.102}, {"word": "interface", "offset": 0.102, "duration": 0.459}, {"word": "directly", "offset": 0.561, "duration": 0.408}, {"word": "with", "offset": 0.969, "duration": 0.204}]}, {"text": "the original Game Boy", "start": 65.025, "duration": 0.9180000000000064, "color": "#20eb12", "visual": "rings", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "original", "offset": 0.153, "duration": 0.408}, {"word": "Game", "offset": 0.561, "duration": 0.204}, {"word": "Boy", "offset": 0.765, "duration": 0.153}]}, {"text": "Camera hardware. That&#39;s right\u2014you", "start": 65.943, "duration": 1.7349999999999994, "color": "#35d030", "visual": "bars", "words": [{"word": "Camera", "offset": 0.0, "duration": 0.306}, {"word": "hardware.", "offset": 0.307, "duration": 0.664}, {"word": "That&#39;s", "offset": 0.97, "duration": 0.306}, {"word": "right\u2014you", "offset": 1.276, "duration": 0.459}]}, {"text": "plug your actual 1998", "start": 67.679, "duration": 0.9179999999999922, "color": "#28d328", "visual": "dots", "words": [{"word": "plug", "offset": 0.0, "duration": 0.204}, {"word": "your", "offset": 0.204, "duration": 0.204}, {"word": "actual", "offset": 0.408, "duration": 0.306}, {"word": "1998", "offset": 0.714, "duration": 0.204}]}, {"text": "Game Boy Camera cartridge", "start": 68.597, "duration": 1.1230000000000047, "color": "#32e738", "visual": "lines", "words": [{"word": "Game", "offset": 0.0, "duration": 0.204}, {"word": "Boy", "offset": 0.205, "duration": 0.153}, {"word": "Camera", "offset": 0.358, "duration": 0.306}, {"word": "cartridge", "offset": 0.664, "duration": 0.459}]}, {"text": "into your phone, and", "start": 69.72, "duration": 0.9700000000000131, "color": "#3bee47", "visual": "grid", "words": [{"word": "into", "offset": 0.0, "duration": 0.204}, {"word": "your", "offset": 0.204, "duration": 0.204}, {"word": "phone,", "offset": 0.409, "duration": 0.408}, {"word": "and", "offset": 0.817, "duration": 0.153}]}, {"text": "suddenly, your modern, multi-core,", "start": 70.69, "duration": 1.88900000000001, "color": "#28d539", "visual": "arcs", "words": [{"word": "suddenly,", "offset": 0.0, "duration": 0.561}, {"word": "your", "offset": 0.561, "duration": 0.204}, {"word": "modern,", "offset": 0.766, "duration": 0.459}, {"word": "multi-core,", "offset": 1.225, "duration": 0.664}]}, {"text": "high-definition Android slab is", "start": 72.578, "duration": 1.4300000000000068, "color": "#14ce2c", "visual": "rings", "words": [{"word": "high-definition", "offset": 0.0, "duration": 0.766}, {"word": "Android", "offset": 0.766, "duration": 0.357}, {"word": "slab", "offset": 1.123, "duration": 0.204}, {"word": "is", "offset": 1.328, "duration": 0.102}]}, {"text": "processing 128 by 112", "start": 74.008, "duration": 0.9180000000000064, "color": "#22d53f", "visual": "bars", "words": [{"word": "processing", "offset": 0.0, "duration": 0.51}, {"word": "128", "offset": 0.51, "duration": 0.153}, {"word": "by", "offset": 0.663, "duration": 0.102}, {"word": "112", "offset": 0.765, "duration": 0.153}]}, {"text": "pixel monochromatic images like", "start": 74.926, "duration": 1.4289999999999878, "color": "#25e54a", "visual": "dots", "words": [{"word": "pixel", "offset": 0.0, "duration": 0.255}, {"word": "monochromatic", "offset": 0.256, "duration": 0.664}, {"word": "images", "offset": 0.919, "duration": 0.306}, {"word": "like", "offset": 1.225, "duration": 0.204}]}, {"text": "it&#39;s the heyday of", "start": 76.355, "duration": 0.7660000000000053, "color": "#2dee59", "visual": "lines", "words": [{"word": "it&#39;s", "offset": 0.0, "duration": 0.204}, {"word": "the", "offset": 0.205, "duration": 0.153}, {"word": "heyday", "offset": 0.358, "duration": 0.306}, {"word": "of", "offset": 0.664, "duration": 0.102}]}, {"text": "the Clinton administration. How", "start": 77.121, "duration": 1.6330000000000098, "color": "#0bd53f", "visual": "grid", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "Clinton", "offset": 0.153, "duration": 0.357}, {"word": "administration.", "offset": 0.51, "duration": 0.97}, {"word": "How", "offset": 1.48, "duration": 0.153}]}, {"text": "does it actually work?", "start": 78.754, "duration": 1.1229999999999905, "color": "#14d34b", "visual": "arcs", "words": [{"word": "does", "offset": 0.0, "duration": 0.204}, {"word": "it", "offset": 0.204, "duration": 0.102}, {"word": "actually", "offset": 0.307, "duration": 0.408}, {"word": "work?", "offset": 0.715, "duration": 0.408}]}, {"text": "To make the magic", "start": 79.877, "duration": 0.7150000000000034, "color": "#1acc54", "visual": "rings", "words": [{"word": "To", "offset": 0.0, "duration": 0.102}, {"word": "make", "offset": 0.102, "duration": 0.204}, {"word": "the", "offset": 0.306, "duration": 0.153}, {"word": "magic", "offset": 0.46, "duration": 0.255}]}, {"text": "happen, you will need", "start": 80.592, "duration": 1.019999999999996, "color": "#1bdc5f", "visual": "bars", "words": [{"word": "happen,", "offset": 0.0, "duration": 0.459}, {"word": "you", "offset": 0.459, "duration": 0.153}, {"word": "will", "offset": 0.612, "duration": 0.204}, {"word": "need", "offset": 0.816, "duration": 0.204}]}, {"text": "three things: an Android", "start": 81.613, "duration": 1.1730000000000018, "color": "#0ed25a", "visual": "dots", "words": [{"word": "three", "offset": 0.0, "duration": 0.255}, {"word": "things:", "offset": 0.255, "duration": 0.459}, {"word": "an", "offset": 0.714, "duration": 0.102}, {"word": "Android", "offset": 0.816, "duration": 0.357}]}, {"text": "phone that supports USB", "start": 82.786, "duration": 1.0210000000000008, "color": "#0fe468", "visual": "lines", "words": [{"word": "phone", "offset": 0.0, "duration": 0.255}, {"word": "that", "offset": 0.256, "duration": 0.204}, {"word": "supports", "offset": 0.46, "duration": 0.408}, {"word": "USB", "offset": 0.868, "duration": 0.153}]}, {"text": "On-The-Go, which is virtually", "start": 83.807, "duration": 1.429000000000002, "color": "#14de6f", "visual": "grid", "words": [{"word": "On-The-Go,", "offset": 0.0, "duration": 0.612}, {"word": "which", "offset": 0.613, "duration": 0.255}, {"word": "is", "offset": 0.868, "duration": 0.102}, {"word": "virtually", "offset": 0.97, "duration": 0.459}]}, {"text": "every Android phone released", "start": 85.236, "duration": 1.2759999999999962, "color": "#2ad67d", "visual": "arcs", "words": [{"word": "every", "offset": 0.0, "duration": 0.255}, {"word": "Android", "offset": 0.256, "duration": 0.357}, {"word": "phone", "offset": 0.613, "duration": 0.255}, {"word": "released", "offset": 0.868, "duration": 0.408}]}, {"text": "in the last decade,", "start": 86.512, "duration": 0.9189999999999969, "color": "#0ecd70", "visual": "rings", "words": [{"word": "in", "offset": 0.0, "duration": 0.102}, {"word": "the", "offset": 0.102, "duration": 0.153}, {"word": "last", "offset": 0.256, "duration": 0.204}, {"word": "decade,", "offset": 0.46, "duration": 0.459}]}, {"text": "an Epilogue GB Operator,", "start": 87.431, "duration": 1.1740000000000066, "color": "#21d886", "visual": "bars", "words": [{"word": "an", "offset": 0.0, "duration": 0.102}, {"word": "Epilogue", "offset": 0.102, "duration": 0.408}, {"word": "GB", "offset": 0.51, "duration": 0.102}, {"word": "Operator,", "offset": 0.613, "duration": 0.561}]}, {"text": "and a USB-C adapter", "start": 88.605, "duration": 0.8159999999999883, "color": "#1be993", "visual": "dots", "words": [{"word": "and", "offset": 0.0, "duration": 0.153}, {"word": "a", "offset": 0.153, "duration": 0.051}, {"word": "USB-C", "offset": 0.204, "duration": 0.255}, {"word": "adapter", "offset": 0.459, "duration": 0.357}]}, {"text": "to plug the Operator", "start": 89.422, "duration": 0.8670000000000044, "color": "#2ae79e", "visual": "lines", "words": [{"word": "to", "offset": 0.0, "duration": 0.102}, {"word": "plug", "offset": 0.102, "duration": 0.204}, {"word": "the", "offset": 0.306, "duration": 0.153}, {"word": "Operator", "offset": 0.459, "duration": 0.408}]}, {"text": "into your phone. Once", "start": 90.289, "duration": 1.1229999999999905, "color": "#1ecf90", "visual": "grid", "words": [{"word": "into", "offset": 0.0, "duration": 0.204}, {"word": "your", "offset": 0.204, "duration": 0.204}, {"word": "phone.", "offset": 0.409, "duration": 0.51}, {"word": "Once", "offset": 0.919, "duration": 0.204}]}, {"text": "you have the hardware", "start": 91.412, "duration": 0.9189999999999969, "color": "#11da99", "visual": "arcs", "words": [{"word": "you", "offset": 0.0, "duration": 0.153}, {"word": "have", "offset": 0.153, "duration": 0.204}, {"word": "the", "offset": 0.357, "duration": 0.153}, {"word": "hardware", "offset": 0.511, "duration": 0.408}]}, {"text": "linked up, you simply", "start": 92.331, "duration": 1.019999999999996, "color": "#2cdaa8", "visual": "rings", "words": [{"word": "linked", "offset": 0.0, "duration": 0.306}, {"word": "up,", "offset": 0.306, "duration": 0.255}, {"word": "you", "offset": 0.561, "duration": 0.153}, {"word": "simply", "offset": 0.714, "duration": 0.306}]}, {"text": "insert your Game Boy", "start": 93.352, "duration": 0.8670000000000044, "color": "#16e5b0", "visual": "bars", "words": [{"word": "insert", "offset": 0.0, "duration": 0.306}, {"word": "your", "offset": 0.306, "duration": 0.204}, {"word": "Game", "offset": 0.51, "duration": 0.204}, {"word": "Boy", "offset": 0.714, "duration": 0.153}]}, {"text": "Camera into the GB", "start": 94.219, "duration": 0.7660000000000053, "color": "#37eac2", "visual": "dots", "words": [{"word": "Camera", "offset": 0.0, "duration": 0.306}, {"word": "into", "offset": 0.307, "duration": 0.204}, {"word": "the", "offset": 0.511, "duration": 0.153}, {"word": "GB", "offset": 0.664, "duration": 0.102}]}, {"text": "Operator and launch the", "start": 94.985, "duration": 1.0210000000000008, "color": "#22d4b2", "visual": "lines", "words": [{"word": "Operator", "offset": 0.0, "duration": 0.408}, {"word": "and", "offset": 0.408, "duration": 0.153}, {"word": "launch", "offset": 0.561, "duration": 0.306}, {"word": "the", "offset": 0.868, "duration": 0.153}]}, {"text": "Flashback app. From there,", "start": 96.006, "duration": 1.480000000000004, "color": "#28ebcc", "visual": "grid", "words": [{"word": "Flashback", "offset": 0.0, "duration": 0.459}, {"word": "app.", "offset": 0.459, "duration": 0.408}, {"word": "From", "offset": 0.867, "duration": 0.204}, {"word": "there,", "offset": 1.072, "duration": 0.408}]}, {"text": "the app acts as", "start": 97.486, "duration": 0.6119999999999948, "color": "#0ed4ba", "visual": "arcs", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "app", "offset": 0.153, "duration": 0.153}, {"word": "acts", "offset": 0.306, "duration": 0.204}, {"word": "as", "offset": 0.51, "duration": 0.102}]}, {"text": "a bridge. It reads", "start": 98.098, "duration": 0.9699999999999989, "color": "#0ee9d4", "visual": "rings", "words": [{"word": "a", "offset": 0.0, "duration": 0.051}, {"word": "bridge.", "offset": 0.051, "duration": 0.561}, {"word": "It", "offset": 0.613, "duration": 0.102}, {"word": "reads", "offset": 0.715, "duration": 0.255}]}, {"text": "the uncompressed sensor data", "start": 99.068, "duration": 1.2759999999999962, "color": "#10eadc", "visual": "bars", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "uncompressed", "offset": 0.153, "duration": 0.612}, {"word": "sensor", "offset": 0.766, "duration": 0.306}, {"word": "data", "offset": 1.072, "duration": 0.204}]}, {"text": "directly from the cartridge", "start": 100.344, "duration": 1.2250000000000085, "color": "#34e9e3", "visual": "dots", "words": [{"word": "directly", "offset": 0.0, "duration": 0.408}, {"word": "from", "offset": 0.408, "duration": 0.204}, {"word": "the", "offset": 0.613, "duration": 0.153}, {"word": "cartridge", "offset": 0.766, "duration": 0.459}]}, {"text": "in real time, bypassing", "start": 101.569, "duration": 1.1230000000000047, "color": "#1be7e7", "visual": "lines", "words": [{"word": "in", "offset": 0.0, "duration": 0.102}, {"word": "real", "offset": 0.102, "duration": 0.204}, {"word": "time,", "offset": 0.306, "duration": 0.357}, {"word": "bypassing", "offset": 0.664, "duration": 0.459}]}, {"text": "the limitations of the", "start": 102.692, "duration": 0.9700000000000131, "color": "#11d3d9", "visual": "grid", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "limitations", "offset": 0.153, "duration": 0.561}, {"word": "of", "offset": 0.714, "duration": 0.102}, {"word": "the", "offset": 0.817, "duration": 0.153}]}, {"text": "original Game Boy screen.", "start": 103.662, "duration": 1.3260000000000076, "color": "#1ddce9", "visual": "arcs", "words": [{"word": "original", "offset": 0.0, "duration": 0.408}, {"word": "Game", "offset": 0.408, "duration": 0.204}, {"word": "Boy", "offset": 0.612, "duration": 0.153}, {"word": "screen.", "offset": 0.765, "duration": 0.561}]}, {"text": "This means you aren&#39;t", "start": 104.989, "duration": 0.9179999999999922, "color": "#17bcce", "visual": "rings", "words": [{"word": "This", "offset": 0.0, "duration": 0.204}, {"word": "means", "offset": 0.204, "duration": 0.255}, {"word": "you", "offset": 0.459, "duration": 0.153}, {"word": "aren&#39;t", "offset": 0.612, "duration": 0.306}]}, {"text": "just getting the photos;", "start": 105.907, "duration": 1.1740000000000066, "color": "#36cbe1", "visual": "bars", "words": [{"word": "just", "offset": 0.0, "duration": 0.204}, {"word": "getting", "offset": 0.205, "duration": 0.357}, {"word": "the", "offset": 0.562, "duration": 0.153}, {"word": "photos;", "offset": 0.715, "duration": 0.459}]}, {"text": "you are getting the", "start": 107.081, "duration": 0.8170000000000073, "color": "#1dc9ea", "visual": "dots", "words": [{"word": "you", "offset": 0.0, "duration": 0.153}, {"word": "are", "offset": 0.153, "duration": 0.153}, {"word": "getting", "offset": 0.307, "duration": 0.357}, {"word": "the", "offset": 0.664, "duration": 0.153}]}, {"text": "live viewfinder feed right", "start": 107.898, "duration": 1.1739999999999924, "color": "#2cbddf", "visual": "lines", "words": [{"word": "live", "offset": 0.0, "duration": 0.204}, {"word": "viewfinder", "offset": 0.204, "duration": 0.51}, {"word": "feed", "offset": 0.715, "duration": 0.204}, {"word": "right", "offset": 0.919, "duration": 0.255}]}, {"text": "on your phone&#39;s display.", "start": 109.072, "duration": 1.2749999999999915, "color": "#13acd8", "visual": "grid", "words": [{"word": "on", "offset": 0.0, "duration": 0.102}, {"word": "your", "offset": 0.102, "duration": 0.204}, {"word": "phone&#39;s", "offset": 0.306, "duration": 0.357}, {"word": "display.", "offset": 0.663, "duration": 0.612}]}, {"text": "It is a surreal", "start": 110.348, "duration": 0.6119999999999948, "color": "#1eabdc", "visual": "arcs", "words": [{"word": "It", "offset": 0.0, "duration": 0.102}, {"word": "is", "offset": 0.102, "duration": 0.102}, {"word": "a", "offset": 0.204, "duration": 0.051}, {"word": "surreal", "offset": 0.255, "duration": 0.357}]}, {"text": "experience seeing that blocky,", "start": 110.96, "duration": 1.480000000000004, "color": "#2ba5d6", "visual": "rings", "words": [{"word": "experience", "offset": 0.0, "duration": 0.51}, {"word": "seeing", "offset": 0.511, "duration": 0.306}, {"word": "that", "offset": 0.817, "duration": 0.204}, {"word": "blocky,", "offset": 1.021, "duration": 0.459}]}, {"text": "ultra-lo-fi sensor data being", "start": 112.441, "duration": 1.3259999999999934, "color": "#12a0e3", "visual": "bars", "words": [{"word": "ultra-lo-fi", "offset": 0.0, "duration": 0.561}, {"word": "sensor", "offset": 0.561, "duration": 0.306}, {"word": "data", "offset": 0.867, "duration": 0.204}, {"word": "being", "offset": 1.071, "duration": 0.255}]}, {"text": "rendered on an AMOLED", "start": 113.768, "duration": 0.9179999999999922, "color": "#37aef0", "visual": "dots", "words": [{"word": "rendered", "offset": 0.0, "duration": 0.408}, {"word": "on", "offset": 0.408, "duration": 0.102}, {"word": "an", "offset": 0.51, "duration": 0.102}, {"word": "AMOLED", "offset": 0.612, "duration": 0.306}]}, {"text": "screen. But Epilogue didn&#39;t", "start": 114.686, "duration": 1.4289999999999878, "color": "#34a5ed", "visual": "lines", "words": [{"word": "screen.", "offset": 0.0, "duration": 0.561}, {"word": "But", "offset": 0.562, "duration": 0.153}, {"word": "Epilogue", "offset": 0.715, "duration": 0.408}, {"word": "didn&#39;t", "offset": 1.123, "duration": 0.306}]}, {"text": "just stop at a", "start": 116.115, "duration": 0.5620000000000118, "color": "#39a4f1", "visual": "grid", "words": [{"word": "just", "offset": 0.0, "duration": 0.204}, {"word": "stop", "offset": 0.205, "duration": 0.204}, {"word": "at", "offset": 0.409, "duration": 0.102}, {"word": "a", "offset": 0.511, "duration": 0.051}]}, {"text": "1-to-1 port of the", "start": 116.677, "duration": 0.7650000000000006, "color": "#238ee6", "visual": "arcs", "words": [{"word": "1-to-1", "offset": 0.0, "duration": 0.306}, {"word": "port", "offset": 0.306, "duration": 0.204}, {"word": "of", "offset": 0.51, "duration": 0.102}, {"word": "the", "offset": 0.612, "duration": 0.153}]}, {"text": "experience. They modernized the", "start": 117.442, "duration": 1.6340000000000146, "color": "#3493ec", "visual": "rings", "words": [{"word": "experience.", "offset": 0.0, "duration": 0.766}, {"word": "They", "offset": 0.766, "duration": 0.204}, {"word": "modernized", "offset": 0.97, "duration": 0.51}, {"word": "the", "offset": 1.481, "duration": 0.153}]}, {"text": "workflow in ways that", "start": 119.076, "duration": 0.9180000000000064, "color": "#3a90ec", "visual": "bars", "words": [{"word": "workflow", "offset": 0.0, "duration": 0.408}, {"word": "in", "offset": 0.408, "duration": 0.102}, {"word": "ways", "offset": 0.51, "duration": 0.204}, {"word": "that", "offset": 0.714, "duration": 0.204}]}, {"text": "retro photography fans have", "start": 119.994, "duration": 1.2249999999999943, "color": "#166bd3", "visual": "dots", "words": [{"word": "retro", "offset": 0.0, "duration": 0.255}, {"word": "photography", "offset": 0.256, "duration": 0.561}, {"word": "fans", "offset": 0.817, "duration": 0.204}, {"word": "have", "offset": 1.021, "duration": 0.204}]}, {"text": "been begging for. In", "start": 121.219, "duration": 1.0720000000000027, "color": "#186ce0", "visual": "lines", "words": [{"word": "been", "offset": 0.0, "duration": 0.204}, {"word": "begging", "offset": 0.205, "duration": 0.357}, {"word": "for.", "offset": 0.562, "duration": 0.408}, {"word": "In", "offset": 0.97, "duration": 0.102}]}, {"text": "the past, if you", "start": 122.291, "duration": 0.7660000000000053, "color": "#2d70da", "visual": "grid", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "past,", "offset": 0.153, "duration": 0.357}, {"word": "if", "offset": 0.511, "duration": 0.102}, {"word": "you", "offset": 0.613, "duration": 0.153}]}, {"text": "took a great photo", "start": 123.057, "duration": 0.7649999999999864, "color": "#105eed", "visual": "arcs", "words": [{"word": "took", "offset": 0.0, "duration": 0.204}, {"word": "a", "offset": 0.204, "duration": 0.051}, {"word": "great", "offset": 0.255, "duration": 0.255}, {"word": "photo", "offset": 0.51, "duration": 0.255}]}, {"text": "on the Game Boy", "start": 123.822, "duration": 0.6129999999999995, "color": "#175be9", "visual": "rings", "words": [{"word": "on", "offset": 0.0, "duration": 0.102}, {"word": "the", "offset": 0.102, "duration": 0.153}, {"word": "Game", "offset": 0.256, "duration": 0.204}, {"word": "Boy", "offset": 0.46, "duration": 0.153}]}, {"text": "Camera, your only official", "start": 124.435, "duration": 1.2759999999999962, "color": "#2858cc", "visual": "bars", "words": [{"word": "Camera,", "offset": 0.0, "duration": 0.459}, {"word": "your", "offset": 0.459, "duration": 0.204}, {"word": "only", "offset": 0.663, "duration": 0.204}, {"word": "official", "offset": 0.868, "duration": 0.408}]}, {"text": "option was to print", "start": 125.711, "duration": 0.8160000000000025, "color": "#1d52ed", "visual": "dots", "words": [{"word": "option", "offset": 0.0, "duration": 0.306}, {"word": "was", "offset": 0.306, "duration": 0.153}, {"word": "to", "offset": 0.459, "duration": 0.102}, {"word": "print", "offset": 0.561, "duration": 0.255}]}, {"text": "it out on tiny", "start": 126.527, "duration": 0.5619999999999976, "color": "#0e3ddd", "visual": "lines", "words": [{"word": "it", "offset": 0.0, "duration": 0.102}, {"word": "out", "offset": 0.103, "duration": 0.153}, {"word": "on", "offset": 0.256, "duration": 0.102}, {"word": "tiny", "offset": 0.358, "duration": 0.204}]}, {"text": "thermal paper using the", "start": 127.089, "duration": 1.0209999999999866, "color": "#244bec", "visual": "grid", "words": [{"word": "thermal", "offset": 0.0, "duration": 0.357}, {"word": "paper", "offset": 0.357, "duration": 0.255}, {"word": "using", "offset": 0.612, "duration": 0.255}, {"word": "the", "offset": 0.868, "duration": 0.153}]}, {"text": "Game Boy Printer. With", "start": 128.11, "duration": 1.1730000000000018, "color": "#1e3cd8", "visual": "arcs", "words": [{"word": "Game", "offset": 0.0, "duration": 0.204}, {"word": "Boy", "offset": 0.204, "duration": 0.153}, {"word": "Printer.", "offset": 0.357, "duration": 0.612}, {"word": "With", "offset": 0.969, "duration": 0.204}]}, {"text": "the Flashback app, you", "start": 129.284, "duration": 1.070999999999998, "color": "#233eef", "visual": "rings", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "Flashback", "offset": 0.153, "duration": 0.459}, {"word": "app,", "offset": 0.612, "duration": 0.306}, {"word": "you", "offset": 0.918, "duration": 0.153}]}, {"text": "can instantly save those", "start": 130.355, "duration": 1.0720000000000027, "color": "#1529e6", "visual": "bars", "words": [{"word": "can", "offset": 0.0, "duration": 0.153}, {"word": "instantly", "offset": 0.154, "duration": 0.459}, {"word": "save", "offset": 0.613, "duration": 0.204}, {"word": "those", "offset": 0.817, "duration": 0.255}]}, {"text": "photos directly to your", "start": 131.427, "duration": 1.021000000000015, "color": "#0e1ce1", "visual": "dots", "words": [{"word": "photos", "offset": 0.0, "duration": 0.306}, {"word": "directly", "offset": 0.307, "duration": 0.408}, {"word": "to", "offset": 0.715, "duration": 0.102}, {"word": "your", "offset": 0.817, "duration": 0.204}]}, {"text": "Android device&#39;s camera roll.", "start": 132.448, "duration": 1.531000000000006, "color": "#2027e3", "visual": "lines", "words": [{"word": "Android", "offset": 0.0, "duration": 0.357}, {"word": "device&#39;s", "offset": 0.357, "duration": 0.408}, {"word": "camera", "offset": 0.766, "duration": 0.306}, {"word": "roll.", "offset": 1.072, "duration": 0.459}]}, {"text": "Even better, the app", "start": 133.979, "duration": 0.9699999999999704, "color": "#0e0ede", "visual": "grid", "words": [{"word": "Even", "offset": 0.0, "duration": 0.204}, {"word": "better,", "offset": 0.204, "duration": 0.459}, {"word": "the", "offset": 0.664, "duration": 0.153}, {"word": "app", "offset": 0.817, "duration": 0.153}]}, {"text": "allows you to scale", "start": 134.949, "duration": 0.8159999999999741, "color": "#302bcd", "visual": "arcs", "words": [{"word": "allows", "offset": 0.0, "duration": 0.306}, {"word": "you", "offset": 0.306, "duration": 0.153}, {"word": "to", "offset": 0.459, "duration": 0.102}, {"word": "scale", "offset": 0.561, "duration": 0.255}]}, {"text": "the images up cleanly", "start": 135.766, "duration": 0.9180000000000064, "color": "#4136eb", "visual": "rings", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "images", "offset": 0.153, "duration": 0.306}, {"word": "up", "offset": 0.459, "duration": 0.102}, {"word": "cleanly", "offset": 0.561, "duration": 0.357}]}, {"text": "without blurring the iconic", "start": 136.684, "duration": 1.2250000000000227, "color": "#4233d0", "visual": "bars", "words": [{"word": "without", "offset": 0.0, "duration": 0.357}, {"word": "blurring", "offset": 0.358, "duration": 0.408}, {"word": "the", "offset": 0.766, "duration": 0.153}, {"word": "iconic", "offset": 0.919, "duration": 0.306}]}, {"text": "pixels, meaning you can", "start": 137.909, "duration": 1.1229999999999905, "color": "#391eef", "visual": "dots", "words": [{"word": "pixels,", "offset": 0.0, "duration": 0.459}, {"word": "meaning", "offset": 0.46, "duration": 0.357}, {"word": "you", "offset": 0.817, "duration": 0.153}, {"word": "can", "offset": 0.97, "duration": 0.153}]}, {"text": "finally share your Game", "start": 139.032, "duration": 1.0209999999999866, "color": "#3211dd", "visual": "lines", "words": [{"word": "finally", "offset": 0.0, "duration": 0.357}, {"word": "share", "offset": 0.358, "duration": 0.255}, {"word": "your", "offset": 0.613, "duration": 0.204}, {"word": "Game", "offset": 0.817, "duration": 0.204}]}, {"text": "Boy photography on Instagram,", "start": 140.053, "duration": 1.429000000000002, "color": "#4b2bcf", "visual": "grid", "words": [{"word": "Boy", "offset": 0.0, "duration": 0.153}, {"word": "photography", "offset": 0.153, "duration": 0.561}, {"word": "on", "offset": 0.715, "duration": 0.102}, {"word": "Instagram,", "offset": 0.817, "duration": 0.612}]}, {"text": "Twitter, or Discord without", "start": 141.482, "duration": 1.3269999999999982, "color": "#542bdf", "visual": "arcs", "words": [{"word": "Twitter,", "offset": 0.0, "duration": 0.51}, {"word": "or", "offset": 0.511, "duration": 0.102}, {"word": "Discord", "offset": 0.613, "duration": 0.357}, {"word": "without", "offset": 0.97, "duration": 0.357}]}, {"text": "it looking like a", "start": 142.809, "duration": 0.7150000000000034, "color": "#4312d3", "visual": "rings", "words": [{"word": "it", "offset": 0.0, "duration": 0.102}, {"word": "looking", "offset": 0.102, "duration": 0.357}, {"word": "like", "offset": 0.46, "duration": 0.204}, {"word": "a", "offset": 0.664, "duration": 0.051}]}, {"text": "blurry mess. They have", "start": 143.524, "duration": 1.1730000000000018, "color": "#5d2bd7", "visual": "bars", "words": [{"word": "blurry", "offset": 0.0, "duration": 0.306}, {"word": "mess.", "offset": 0.306, "duration": 0.459}, {"word": "They", "offset": 0.765, "duration": 0.204}, {"word": "have", "offset": 0.969, "duration": 0.204}]}, {"text": "also included a feature", "start": 144.698, "duration": 1.0199999999999818, "color": "#6734d4", "visual": "dots", "words": [{"word": "also", "offset": 0.0, "duration": 0.204}, {"word": "included", "offset": 0.204, "duration": 0.408}, {"word": "a", "offset": 0.612, "duration": 0.051}, {"word": "feature", "offset": 0.663, "duration": 0.357}]}, {"text": "to swap out the", "start": 145.718, "duration": 0.6129999999999995, "color": "#520fcd", "visual": "lines", "words": [{"word": "to", "offset": 0.0, "duration": 0.102}, {"word": "swap", "offset": 0.103, "duration": 0.204}, {"word": "out", "offset": 0.307, "duration": 0.153}, {"word": "the", "offset": 0.46, "duration": 0.153}]}, {"text": "color palettes on the", "start": 146.331, "duration": 0.9190000000000111, "color": "#660fee", "visual": "grid", "words": [{"word": "color", "offset": 0.0, "duration": 0.255}, {"word": "palettes", "offset": 0.255, "duration": 0.408}, {"word": "on", "offset": 0.663, "duration": 0.102}, {"word": "the", "offset": 0.766, "duration": 0.153}]}, {"text": "fly. You aren&#39;t restricted", "start": 147.25, "duration": 1.3769999999999811, "color": "#6610dd", "visual": "arcs", "words": [{"word": "fly.", "offset": 0.0, "duration": 0.408}, {"word": "You", "offset": 0.408, "duration": 0.153}, {"word": "aren&#39;t", "offset": 0.561, "duration": 0.306}, {"word": "restricted", "offset": 0.867, "duration": 0.51}]}, {"text": "to the classic four", "start": 148.628, "duration": 0.8160000000000309, "color": "#762bd1", "visual": "rings", "words": [{"word": "to", "offset": 0.0, "duration": 0.102}, {"word": "the", "offset": 0.102, "duration": 0.153}, {"word": "classic", "offset": 0.255, "duration": 0.357}, {"word": "four", "offset": 0.612, "duration": 0.204}]}, {"text": "shades of pea-soup green", "start": 149.444, "duration": 1.0720000000000027, "color": "#7e12f0", "visual": "bars", "words": [{"word": "shades", "offset": 0.0, "duration": 0.306}, {"word": "of", "offset": 0.307, "duration": 0.102}, {"word": "pea-soup", "offset": 0.409, "duration": 0.408}, {"word": "green", "offset": 0.817, "duration": 0.255}]}, {"text": "anymore; you can instantly", "start": 150.516, "duration": 1.2760000000000105, "color": "#8016e3", "visual": "dots", "words": [{"word": "anymore;", "offset": 0.0, "duration": 0.51}, {"word": "you", "offset": 0.511, "duration": 0.153}, {"word": "can", "offset": 0.664, "duration": 0.153}, {"word": "instantly", "offset": 0.817, "duration": 0.459}]}, {"text": "apply classic black-and-white, amber,", "start": 151.792, "duration": 1.938999999999993, "color": "#841adb", "visual": "lines", "words": [{"word": "apply", "offset": 0.0, "duration": 0.255}, {"word": "classic", "offset": 0.255, "duration": 0.357}, {"word": "black-and-white,", "offset": 0.613, "duration": 0.919}, {"word": "amber,", "offset": 1.531, "duration": 0.408}]}, {"text": "or custom colorways before", "start": 153.732, "duration": 1.1730000000000018, "color": "#9019e5", "visual": "grid", "words": [{"word": "or", "offset": 0.0, "duration": 0.102}, {"word": "custom", "offset": 0.102, "duration": 0.306}, {"word": "colorways", "offset": 0.408, "duration": 0.459}, {"word": "before", "offset": 0.867, "duration": 0.306}]}, {"text": "you snap the shot.", "start": 154.906, "duration": 0.9689999999999941, "color": "#911eda", "visual": "arcs", "words": [{"word": "you", "offset": 0.0, "duration": 0.153}, {"word": "snap", "offset": 0.153, "duration": 0.204}, {"word": "the", "offset": 0.357, "duration": 0.153}, {"word": "shot.", "offset": 0.51, "duration": 0.459}]}, {"text": "This release from Epilogue", "start": 155.875, "duration": 1.1739999999999782, "color": "#9b11e7", "visual": "rings", "words": [{"word": "This", "offset": 0.0, "duration": 0.204}, {"word": "release", "offset": 0.204, "duration": 0.357}, {"word": "from", "offset": 0.562, "duration": 0.204}, {"word": "Epilogue", "offset": 0.766, "duration": 0.408}]}, {"text": "is a massive win", "start": 157.049, "duration": 0.6639999999999873, "color": "#b22df2", "visual": "bars", "words": [{"word": "is", "offset": 0.0, "duration": 0.102}, {"word": "a", "offset": 0.102, "duration": 0.051}, {"word": "massive", "offset": 0.153, "duration": 0.357}, {"word": "win", "offset": 0.511, "duration": 0.153}]}, {"text": "for the retro tech", "start": 157.713, "duration": 0.7650000000000148, "color": "#a71edf", "visual": "dots", "words": [{"word": "for", "offset": 0.0, "duration": 0.153}, {"word": "the", "offset": 0.153, "duration": 0.153}, {"word": "retro", "offset": 0.306, "duration": 0.255}, {"word": "tech", "offset": 0.561, "duration": 0.204}]}, {"text": "community and a perfect", "start": 158.478, "duration": 1.0209999999999866, "color": "#ac31d7", "visual": "lines", "words": [{"word": "community", "offset": 0.0, "duration": 0.459}, {"word": "and", "offset": 0.46, "duration": 0.153}, {"word": "a", "offset": 0.613, "duration": 0.051}, {"word": "perfect", "offset": 0.664, "duration": 0.357}]}, {"text": "example of why the", "start": 159.499, "duration": 0.7659999999999911, "color": "#b927e4", "visual": "grid", "words": [{"word": "example", "offset": 0.0, "duration": 0.357}, {"word": "of", "offset": 0.357, "duration": 0.102}, {"word": "why", "offset": 0.46, "duration": 0.153}, {"word": "the", "offset": 0.613, "duration": 0.153}]}, {"text": "open ecosystem of Android", "start": 160.265, "duration": 1.122000000000014, "color": "#c01de8", "visual": "arcs", "words": [{"word": "open", "offset": 0.0, "duration": 0.204}, {"word": "ecosystem", "offset": 0.204, "duration": 0.459}, {"word": "of", "offset": 0.663, "duration": 0.102}, {"word": "Android", "offset": 0.765, "duration": 0.357}]}, {"text": "is so powerful. Because", "start": 161.388, "duration": 1.2239999999999895, "color": "#cc16ef", "visual": "rings", "words": [{"word": "is", "offset": 0.0, "duration": 0.102}, {"word": "so", "offset": 0.102, "duration": 0.102}, {"word": "powerful.", "offset": 0.204, "duration": 0.664}, {"word": "Because", "offset": 0.867, "duration": 0.357}]}, {"text": "Android allows for robust", "start": 162.613, "duration": 1.122000000000014, "color": "#cc2be4", "visual": "bars", "words": [{"word": "Android", "offset": 0.0, "duration": 0.357}, {"word": "allows", "offset": 0.357, "duration": 0.306}, {"word": "for", "offset": 0.663, "duration": 0.153}, {"word": "robust", "offset": 0.816, "duration": 0.306}]}, {"text": "USB peripheral support, developers", "start": 163.735, "duration": 1.683999999999969, "color": "#cd15e1", "visual": "dots", "words": [{"word": "USB", "offset": 0.0, "duration": 0.153}, {"word": "peripheral", "offset": 0.154, "duration": 0.51}, {"word": "support,", "offset": 0.664, "duration": 0.51}, {"word": "developers", "offset": 1.174, "duration": 0.51}]}, {"text": "can create these incredibly", "start": 165.42, "duration": 1.2239999999999895, "color": "#ca1ed6", "visual": "lines", "words": [{"word": "can", "offset": 0.0, "duration": 0.153}, {"word": "create", "offset": 0.153, "duration": 0.306}, {"word": "these", "offset": 0.459, "duration": 0.255}, {"word": "incredibly", "offset": 0.714, "duration": 0.51}]}, {"text": "niche, hardware-level interactions that", "start": 166.645, "duration": 1.938999999999993, "color": "#cb0ed2", "visual": "grid", "words": [{"word": "niche,", "offset": 0.0, "duration": 0.408}, {"word": "hardware-level", "offset": 0.408, "duration": 0.715}, {"word": "interactions", "offset": 1.123, "duration": 0.612}, {"word": "that", "offset": 1.735, "duration": 0.204}]}, {"text": "just wouldn&#39;t be possible", "start": 168.584, "duration": 1.1229999999999905, "color": "#e618e6", "visual": "arcs", "words": [{"word": "just", "offset": 0.0, "duration": 0.204}, {"word": "wouldn&#39;t", "offset": 0.204, "duration": 0.408}, {"word": "be", "offset": 0.613, "duration": 0.102}, {"word": "possible", "offset": 0.715, "duration": 0.408}]}, {"text": "on more locked-down mobile", "start": 169.707, "duration": 1.1740000000000066, "color": "#ea10e3", "visual": "rings", "words": [{"word": "on", "offset": 0.0, "duration": 0.102}, {"word": "more", "offset": 0.102, "duration": 0.204}, {"word": "locked-down", "offset": 0.306, "duration": 0.561}, {"word": "mobile", "offset": 0.868, "duration": 0.306}]}, {"text": "platforms. It breathes new", "start": 170.881, "duration": 1.377999999999986, "color": "#da19cd", "visual": "bars", "words": [{"word": "platforms.", "offset": 0.0, "duration": 0.715}, {"word": "It", "offset": 0.715, "duration": 0.102}, {"word": "breathes", "offset": 0.817, "duration": 0.408}, {"word": "new", "offset": 1.225, "duration": 0.153}]}, {"text": "life into hardware that", "start": 172.259, "duration": 1.021000000000015, "color": "#d00fbd", "visual": "dots", "words": [{"word": "life", "offset": 0.0, "duration": 0.204}, {"word": "into", "offset": 0.204, "duration": 0.204}, {"word": "hardware", "offset": 0.408, "duration": 0.408}, {"word": "that", "offset": 0.817, "duration": 0.204}]}, {"text": "is over 25 years", "start": 173.28, "duration": 0.6629999999999825, "color": "#e524cc", "visual": "lines", "words": [{"word": "is", "offset": 0.0, "duration": 0.102}, {"word": "over", "offset": 0.102, "duration": 0.204}, {"word": "25", "offset": 0.306, "duration": 0.102}, {"word": "years", "offset": 0.408, "duration": 0.255}]}, {"text": "old and makes it", "start": 173.943, "duration": 0.6639999999999873, "color": "#d714b7", "visual": "grid", "words": [{"word": "old", "offset": 0.0, "duration": 0.153}, {"word": "and", "offset": 0.154, "duration": 0.153}, {"word": "makes", "offset": 0.307, "duration": 0.255}, {"word": "it", "offset": 0.562, "duration": 0.102}]}, {"text": "instantly accessible for the", "start": 174.607, "duration": 1.275999999999982, "color": "#e515bd", "visual": "arcs", "words": [{"word": "instantly", "offset": 0.0, "duration": 0.459}, {"word": "accessible", "offset": 0.459, "duration": 0.51}, {"word": "for", "offset": 0.97, "duration": 0.153}, {"word": "the", "offset": 1.123, "duration": 0.153}]}, {"text": "modern internet age. If", "start": 175.883, "duration": 1.2249999999999943, "color": "#e910b8", "visual": "rings", "words": [{"word": "modern", "offset": 0.0, "duration": 0.306}, {"word": "internet", "offset": 0.306, "duration": 0.408}, {"word": "age.", "offset": 0.714, "duration": 0.408}, {"word": "If", "offset": 1.123, "duration": 0.102}]}, {"text": "you have an old", "start": 177.108, "duration": 0.6119999999999948, "color": "#f13cc2", "visual": "bars", "words": [{"word": "you", "offset": 0.0, "duration": 0.153}, {"word": "have", "offset": 0.153, "duration": 0.204}, {"word": "an", "offset": 0.357, "duration": 0.102}, {"word": "old", "offset": 0.459, "duration": 0.153}]}, {"text": "Game Boy Camera sitting", "start": 177.72, "duration": 1.0209999999999866, "color": "#df15a4", "visual": "dots", "words": [{"word": "Game", "offset": 0.0, "duration": 0.204}, {"word": "Boy", "offset": 0.205, "duration": 0.153}, {"word": "Camera", "offset": 0.358, "duration": 0.306}, {"word": "sitting", "offset": 0.664, "duration": 0.357}]}, {"text": "in a drawer, or", "start": 178.741, "duration": 0.7150000000000034, "color": "#cd2e9a", "visual": "lines", "words": [{"word": "in", "offset": 0.0, "duration": 0.102}, {"word": "a", "offset": 0.102, "duration": 0.051}, {"word": "drawer,", "offset": 0.153, "duration": 0.459}, {"word": "or", "offset": 0.613, "duration": 0.102}]}, {"text": "if you&#39;ve been eyeing", "start": 179.456, "duration": 0.9180000000000348, "color": "#d42b98", "visual": "grid", "words": [{"word": "if", "offset": 0.0, "duration": 0.102}, {"word": "you&#39;ve", "offset": 0.102, "duration": 0.306}, {"word": "been", "offset": 0.408, "duration": 0.204}, {"word": "eyeing", "offset": 0.612, "duration": 0.306}]}, {"text": "one on eBay, there", "start": 180.374, "duration": 0.867999999999995, "color": "#dd2294", "visual": "arcs", "words": [{"word": "one", "offset": 0.0, "duration": 0.153}, {"word": "on", "offset": 0.154, "duration": 0.102}, {"word": "eBay,", "offset": 0.256, "duration": 0.357}, {"word": "there", "offset": 0.613, "duration": 0.255}]}, {"text": "has never been a", "start": 181.242, "duration": 0.6639999999999873, "color": "#cc1f84", "visual": "rings", "words": [{"word": "has", "offset": 0.0, "duration": 0.153}, {"word": "never", "offset": 0.153, "duration": 0.255}, {"word": "been", "offset": 0.408, "duration": 0.204}, {"word": "a", "offset": 0.613, "duration": 0.051}]}, {"text": "better time to dust", "start": 181.906, "duration": 0.8160000000000025, "color": "#eb2b94", "visual": "bars", "words": [{"word": "better", "offset": 0.0, "duration": 0.306}, {"word": "time", "offset": 0.306, "duration": 0.204}, {"word": "to", "offset": 0.51, "duration": 0.102}, {"word": "dust", "offset": 0.612, "duration": 0.204}]}, {"text": "it off. Grab a", "start": 182.722, "duration": 0.7659999999999911, "color": "#cf1073", "visual": "dots", "words": [{"word": "it", "offset": 0.0, "duration": 0.102}, {"word": "off.", "offset": 0.102, "duration": 0.408}, {"word": "Grab", "offset": 0.511, "duration": 0.204}, {"word": "a", "offset": 0.715, "duration": 0.051}]}, {"text": "GB Operator, download the", "start": 183.488, "duration": 1.2249999999999943, "color": "#e32782", "visual": "lines", "words": [{"word": "GB", "offset": 0.0, "duration": 0.102}, {"word": "Operator,", "offset": 0.102, "duration": 0.561}, {"word": "download", "offset": 0.663, "duration": 0.408}, {"word": "the", "offset": 1.072, "duration": 0.153}]}, {"text": "Flashback app, and start", "start": 184.713, "duration": 1.1740000000000066, "color": "#d13179", "visual": "grid", "words": [{"word": "Flashback", "offset": 0.0, "duration": 0.459}, {"word": "app,", "offset": 0.459, "duration": 0.306}, {"word": "and", "offset": 0.765, "duration": 0.153}, {"word": "start", "offset": 0.919, "duration": 0.255}]}, {"text": "shooting. The world needs", "start": 185.887, "duration": 1.3269999999999982, "color": "#db2a74", "visual": "arcs", "words": [{"word": "shooting.", "offset": 0.0, "duration": 0.664}, {"word": "The", "offset": 0.663, "duration": 0.153}, {"word": "world", "offset": 0.816, "duration": 0.255}, {"word": "needs", "offset": 1.072, "duration": 0.255}]}, {"text": "more 2-bit photography! Let", "start": 187.214, "duration": 1.377999999999986, "color": "#e52771", "visual": "rings", "words": [{"word": "more", "offset": 0.0, "duration": 0.204}, {"word": "2-bit", "offset": 0.204, "duration": 0.255}, {"word": "photography!", "offset": 0.459, "duration": 0.766}, {"word": "Let", "offset": 1.225, "duration": 0.153}]}, {"text": "us know in the", "start": 188.592, "duration": 0.5609999999999786, "color": "#da2b69", "visual": "bars", "words": [{"word": "us", "offset": 0.0, "duration": 0.102}, {"word": "know", "offset": 0.102, "duration": 0.204}, {"word": "in", "offset": 0.306, "duration": 0.102}, {"word": "the", "offset": 0.408, "duration": 0.153}]}, {"text": "comments if you plan", "start": 189.153, "duration": 0.8680000000000234, "color": "#e72161", "visual": "dots", "words": [{"word": "comments", "offset": 0.0, "duration": 0.408}, {"word": "if", "offset": 0.409, "duration": 0.102}, {"word": "you", "offset": 0.511, "duration": 0.153}, {"word": "plan", "offset": 0.664, "duration": 0.204}]}, {"text": "to try this out,", "start": 190.021, "duration": 0.7650000000000148, "color": "#e93066", "visual": "lines", "words": [{"word": "to", "offset": 0.0, "duration": 0.102}, {"word": "try", "offset": 0.102, "duration": 0.153}, {"word": "this", "offset": 0.255, "duration": 0.204}, {"word": "out,", "offset": 0.459, "duration": 0.306}]}, {"text": "and as always, make", "start": 190.787, "duration": 0.9180000000000064, "color": "#ec2d5f", "visual": "grid", "words": [{"word": "and", "offset": 0.0, "duration": 0.153}, {"word": "as", "offset": 0.153, "duration": 0.102}, {"word": "always,", "offset": 0.255, "duration": 0.459}, {"word": "make", "offset": 0.714, "duration": 0.204}]}, {"text": "sure to subscribe to", "start": 191.705, "duration": 0.867999999999995, "color": "#d53156", "visual": "arcs", "words": [{"word": "sure", "offset": 0.0, "duration": 0.204}, {"word": "to", "offset": 0.204, "duration": 0.102}, {"word": "subscribe", "offset": 0.306, "duration": 0.459}, {"word": "to", "offset": 0.766, "duration": 0.102}]}, {"text": "the channel for more", "start": 192.573, "duration": 0.8669999999999902, "color": "#ec3357", "visual": "rings", "words": [{"word": "the", "offset": 0.0, "duration": 0.153}, {"word": "channel", "offset": 0.153, "duration": 0.357}, {"word": "for", "offset": 0.51, "duration": 0.153}, {"word": "more", "offset": 0.663, "duration": 0.204}]}, {"text": "deep dives into the", "start": 193.441, "duration": 0.8160000000000025, "color": "#d61d3a", "visual": "bars", "words": [{"word": "deep", "offset": 0.0, "duration": 0.204}, {"word": "dives", "offset": 0.204, "duration": 0.255}, {"word": "into", "offset": 0.459, "duration": 0.204}, {"word": "the", "offset": 0.663, "duration": 0.153}]}, {"text": "best of Android, open-source,", "start": 194.257, "duration": 1.5320000000000107, "color": "#d02037", "visual": "dots", "words": [{"word": "best", "offset": 0.0, "duration": 0.204}, {"word": "of", "offset": 0.204, "duration": 0.102}, {"word": "Android,", "offset": 0.306, "duration": 0.51}, {"word": "open-source,", "offset": 0.817, "duration": 0.715}]}, {"text": "and tech news. Catch", "start": 195.788, "duration": 1.0719999999999743, "color": "#db2839", "visual": "lines", "words": [{"word": "and", "offset": 0.0, "duration": 0.153}, {"word": "tech", "offset": 0.154, "duration": 0.204}, {"word": "news.", "offset": 0.358, "duration": 0.459}, {"word": "Catch", "offset": 0.817, "duration": 0.255}]}, {"text": "you in the next", "start": 196.86, "duration": 0.6129999999999995, "color": "#ec2936", "visual": "grid", "words": [{"word": "you", "offset": 0.0, "duration": 0.153}, {"word": "in", "offset": 0.153, "duration": 0.102}, {"word": "the", "offset": 0.255, "duration": 0.153}, {"word": "next", "offset": 0.409, "duration": 0.204}]}, {"text": "one!", "start": 197.473, "duration": 0.3569999999999993, "color": "#d21d22", "visual": "arcs", "words": [{"word": "one!", "offset": 0.0, "duration": 0.357}]}];
+
+// ========== PARTICLES ==========
+(function() {
+    const layer = document.getElementById('particleLayer');
+    for (let i = 0; i < 50; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Math.random() * 4 + 1;
+        p.style.width = size + 'px';
+        p.style.height = size + 'px';
+        p.style.left = Math.random() * 1920 + 'px';
+        p.style.top = Math.random() * 1080 + 'px';
+        layer.appendChild(p);
+        gsap.to(p, {
+            y: -200 - Math.random() * 400,
+            x: (Math.random() - 0.5) * 300,
+            opacity: 0,
+            duration: 5 + Math.random() * 10,
+            repeat: -1,
+            delay: Math.random() * 5,
+            ease: "none"
+        });
+    }
+})();
+
+// ========== BLOB MORPHING ==========
+function morphBlobs(color) {
+    gsap.to('#blob1', { x: Math.random()*400-200, y: Math.random()*300-150, scale: 0.8+Math.random()*0.8, background: color, duration: 3, ease: "sine.inOut" });
+    gsap.to('#blob2', { x: Math.random()*400-200, y: Math.random()*300-150, scale: 0.7+Math.random()*0.9, duration: 3.5, ease: "sine.inOut" });
+    gsap.to('#blob3', { x: Math.random()*300-150, y: Math.random()*200-100, scale: 0.6+Math.random()*1.0, duration: 4, ease: "sine.inOut" });
+}
+
+// ========== VISUAL GENERATORS ==========
+const visualLayer = document.getElementById('visualLayer');
+
+function clearVisuals() {
+    gsap.to(visualLayer.children, { opacity: 0, duration: 0.5, stagger: 0.05, onComplete: () => visualLayer.innerHTML = '' });
+}
+
+function spawnRings(color) {
+    for (let i = 0; i < 3; i++) {
+        const ring = document.createElement('div');
+        ring.className = 'ring';
+        const size = 150 + Math.random() * 300;
+        Object.assign(ring.style, { width: size+'px', height: size+'px', borderColor: color+'44', left: (300+Math.random()*1300)+'px', top: (200+Math.random()*600)+'px' });
+        visualLayer.appendChild(ring);
+        gsap.fromTo(ring, { opacity:0, scale:0.3 }, { opacity:0.6, scale:1, duration:1.5, ease:"elastic.out(1,0.5)", delay:i*0.3 });
+        gsap.to(ring, { rotation:360, duration:8+i*2, repeat:-1, ease:"none" });
+    }
+}
+
+function spawnBars(color) {
+    const group = document.createElement('div');
+    group.className = 'bar-group';
+    Object.assign(group.style, { left: (200+Math.random()*600)+'px', bottom: (150+Math.random()*200)+'px' });
+    for (let i = 0; i < 8; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = '0px';
+        bar.style.background = 'linear-gradient(to top, '+color+', '+color+'88)';
+        group.appendChild(bar);
+        gsap.to(bar, { height: 40+Math.random()*200, duration: 0.8, delay: i*0.1, ease: "back.out(1.7)" });
+    }
+    visualLayer.appendChild(group);
+    gsap.to(group, { opacity: 1, duration: 0.5 });
+}
+
+function spawnDots(color) {
+    const grid = document.createElement('div');
+    grid.className = 'dot-grid';
+    Object.assign(grid.style, { gridTemplateColumns: 'repeat(6, 1fr)', right: (100+Math.random()*400)+'px', top: (200+Math.random()*400)+'px' });
+    for (let i = 0; i < 24; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        dot.style.background = color;
+        grid.appendChild(dot);
+        gsap.to(dot, { opacity: Math.random()*0.8+0.2, scale: 0.5+Math.random()*1.5, duration: 0.4, delay: i*0.05, ease: "back.out(2)" });
+    }
+    visualLayer.appendChild(grid);
+    gsap.to(grid, { opacity: 1, duration: 0.3 });
+}
+
+function spawnLines(color) {
+    for (let i = 0; i < 5; i++) {
+        const line = document.createElement('div');
+        line.className = 'line-element';
+        Object.assign(line.style, { width: (200+Math.random()*600)+'px', background: 'linear-gradient(90deg, '+color+', transparent)', left: Math.random()*1200+'px', top: (100+Math.random()*880)+'px' });
+        visualLayer.appendChild(line);
+        gsap.to(line, { opacity: 0.6, scaleX: 1, duration: 0.8, delay: i*0.15, ease: "power3.out" });
+    }
+}
+
+function spawnGrid(color) {
+    for (let i = 0; i < 12; i++) {
+        const rect = document.createElement('div');
+        const size = 40+Math.random()*120;
+        Object.assign(rect.style, { position:'absolute', border:'2px solid '+color+'33', borderRadius:'8px', width:size+'px', height:size+'px', left:Math.random()*1800+'px', top:Math.random()*1000+'px', opacity:'0' });
+        visualLayer.appendChild(rect);
+        gsap.to(rect, { opacity:0.4, rotation:Math.random()*45, duration:1, delay:i*0.08, ease:"power2.out" });
+        gsap.to(rect, { rotation:'+=90', duration:10+Math.random()*10, repeat:-1, ease:"none" });
+    }
+}
+
+function spawnArcs(color) {
+    for (let i = 0; i < 4; i++) {
+        const arc = document.createElement('div');
+        const size = 200 + Math.random() * 250;
+        Object.assign(arc.style, { position:'absolute', width:size+'px', height:size+'px', borderRadius:'50%', border:'3px solid transparent', borderTopColor:color+'66', borderRightColor:color+'33', left:(200+Math.random()*1400)+'px', top:(100+Math.random()*700)+'px', opacity:'0' });
+        visualLayer.appendChild(arc);
+        gsap.to(arc, { opacity:0.7, duration:0.8, delay:i*0.2 });
+        gsap.to(arc, { rotation:360*(Math.random()>0.5?1:-1), duration:4+Math.random()*6, repeat:-1, ease:"none" });
+    }
+}
+
+const visualSpawners = { rings:spawnRings, bars:spawnBars, dots:spawnDots, lines:spawnLines, grid:spawnGrid, arcs:spawnArcs };
+
+// ========== BUILD TIMED WORD ELEMENTS ==========
+const textLayer = document.getElementById('textLayer');
+const progressBar = document.getElementById('progressBar');
+const masterTl = gsap.timeline();
+
+CHUNKS.forEach((chunk, index) => {
+    // Create chunk container
+    const container = document.createElement('div');
+    container.className = 'chunk-container';
+    container.id = 'chunk-' + index;
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'chunk-text';
+    chunk.words.forEach((w, wi) => {
+        const span = document.createElement('span');
+        span.className = 'word';
+        span.textContent = w.word;
+        span.id = 'c' + index + 'w' + wi;
+        textDiv.appendChild(span);
+    });
+    container.appendChild(textDiv);
+
+    const bar = document.createElement('div');
+    bar.className = 'highlight-bar';
+    bar.style.background = 'linear-gradient(90deg, ' + chunk.color + ', ' + chunk.color + '88)';
+    container.appendChild(bar);
+
+    textLayer.appendChild(container);
+
+    // === PRECISELY TIMED ANIMATIONS ===
+    
+    // Show the chunk container at its exact start time
+    masterTl.set(container, { opacity: 1 }, chunk.start);
+    
+    // Animate highlight bar across the chunk duration
+    masterTl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: chunk.duration * 0.8, ease: "power1.out" }, chunk.start);
+
+    // Animate each word at its EXACT offset time
+    chunk.words.forEach((w, wi) => {
+        const wordEl = document.getElementById('c' + index + 'w' + wi);
+        const wordTime = chunk.start + w.offset;
+        
+        // Word pops in at exact spoken time
+        masterTl.to(wordEl, {
+            opacity: 1,
+            y: 0,
+            duration: 0.15,
+            ease: "back.out(2)"
+        }, wordTime);
+        
+        // Highlight with accent color
+        masterTl.to(wordEl, {
+            color: chunk.color,
+            textShadow: '0 0 40px ' + chunk.color + '88',
+            duration: 0.1
+        }, wordTime);
+        
+        // Unhighlight after its duration
+        masterTl.to(wordEl, {
+            color: '#ffffff',
+            textShadow: '0 0 60px rgba(0,0,0,0.8)',
+            duration: 0.3
+        }, wordTime + w.duration);
+    });
+
+    // Fade out the entire chunk after last word finishes
+    const chunkEnd = chunk.start + chunk.duration;
+    masterTl.to(container, { opacity: 0, y: -30, duration: 0.35, ease: "power2.in" }, chunkEnd - 0.35);
+
+    // Morph blobs on every chunk
+    masterTl.call(morphBlobs, [chunk.color], chunk.start);
+
+    // Swap visual elements every 3 chunks
+    if (index % 3 === 0) {
+        masterTl.call(clearVisuals, [], chunk.start);
+        masterTl.call(() => {
+            const spawner = visualSpawners[chunk.visual] || spawnRings;
+            spawner(chunk.color);
+        }, [], chunk.start + 0.3);
+    }
+});
+
+// Progress bar driven by total duration
+const totalDur = CHUNKS[CHUNKS.length - 1].start + CHUNKS[CHUNKS.length - 1].duration;
+masterTl.to(progressBar, { width: '100%', duration: totalDur, ease: "none" }, 0);
+
+</script>
+</body>
+</html>

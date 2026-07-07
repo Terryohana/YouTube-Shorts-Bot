@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+env/
+
+# Video projects
+video-projects/*.mp4
+video-projects/*.mp3
+video-projects/*.wav
+video-projects/temp*
+
+# Credentials (CRITICAL - DO NOT COMMIT THESE)
+.agents/skills/youtube-uploader/credentials/*.json
+.agents/skills/youtube-uploader/credentials/*.pickle

@@ -1,0 +1,47 @@
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+const texts = [
+  "Welcome to the top 10 Android launchers of 2026. Whether you want minimalism, power, or something completely unique — we've got you covered. Let's count them down.",
+  "Number 10. KISS Launcher. Keep it simple, stupid. This open-source launcher is the fastest and lightest option available. No clutter, no distractions — just a blazing-fast search bar and your apps. Perfect for older devices or anyone who wants their phone to just get out of the way.",
+  "Number 9. Total Launcher. This one is for the power users. Total Launcher offers virtually limitless customization — every icon, every grid, every interaction is fully yours to control. It's complex, but if you want a complete makeover of your home screen, nothing else comes close.",
+  "Number 8. Lynx Launcher. Sleek. Simple. Refined. Lynx delivers a premium home screen experience without the complexity. Clean layouts, smooth animations, and a polished feel that makes your phone look more expensive than it is.",
+  "Number 7. Octopi Launcher. The rising star of 2026. Octopi strikes the perfect balance between deep customization and effortless usability. It's versatile, fast, and gaining a huge community of fans who love its flexibility without the learning curve.",
+  "Number 6. Action Launcher. Known for its signature Quicktheme and Shutters features, Action Launcher gives you a Pixel-like experience turbocharged with productivity tools. It adapts your home screen colors automatically and lets you swipe app icons to reveal shortcuts instantly.",
+  "Number 5. Square Home. If you've ever missed Windows Phone, this one is for you. Square Home brings live tile-style layouts to Android with bold, colorful blocks that are highly customizable. It's visually distinct from everything else on this list — and that's exactly the point.",
+  "Number 4. Microsoft Launcher. This is the ultimate launcher for anyone deep in the Microsoft ecosystem. Outlook, To Do, OneDrive, and Office are all right there on your home screen. It even syncs your phone activity with your Windows PC. If you live in Microsoft's world, this launcher makes your phone feel like an extension of your desktop.",
+  "Number 3. Lawnchair. Open source, Pixel Launcher design, Material You theming, QuickSwitch Magisk support — and no root required. Lawnchair is the best free way to get the Pixel Launcher experience on any Android device. It has over 35,000 five-star reviews, and for good reason.",
+  "Number 2. Niagara Launcher. Niagara changes how you think about your phone. Its ergonomic, list-based design declutters your home screen and keeps you focused. No icon grids, no overwhelming widgets — just the apps you need, exactly where you need them. It's the most beautiful, distraction-free launcher available in 2026.",
+  "And the number one Android launcher of 2026 — Smart Launcher 6. Award-winning. Named Best Launcher Overall by Android Central. Smart Launcher automatically sorts your apps into categories, matches your home screen colors to your wallpaper with Ambient Theme technology, and uses a Fluid Grid System to keep everything perfectly balanced. It's the complete package — simple, beautiful, and incredibly smart. No wonder it has won every major award.",
+  "That's the top 10 Android launchers of 2026. Which one is your favourite? Drop it in the comments below, and don't forget to like and subscribe for more Android content."
+];
+
+async function run() {
+  const durations = [];
+  const ffprobePath = "C:\\Users\\Dell\\Documents\\antigravity\\modest-hypatia\\video-projects\\android-launchers-2026-project\\node_modules\\ffprobe-static\\bin\\win32\\x64\\ffprobe.exe";
+  
+  for (let i = 0; i < texts.length; i++) {
+    const textFile = `part_${i}.txt`;
+    const wavFile = `part_${i}.wav`;
+    fs.writeFileSync(textFile, texts[i]);
+    
+    console.log(`Generating TTS for part ${i}...`);
+    execSync(`npx hyperframes tts ${textFile} -o ${wavFile} -v bm_george -s 1.1`, { stdio: 'inherit' });
+    
+    const durationStr = execSync(`"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${wavFile}`).toString().trim();
+    durations.push(parseFloat(durationStr));
+  }
+  
+  fs.writeFileSync('durations.json', JSON.stringify(durations, null, 2));
+  console.log("Durations:", durations);
+  
+  // Concat WAVs
+  const concatList = texts.map((_, i) => `file 'part_${i}.wav'`).join('\n');
+  fs.writeFileSync('concat.txt', concatList);
+  
+  const ffmpegPath = "C:\\Users\\Dell\\Documents\\antigravity\\modest-hypatia\\video-projects\\android-launchers-2026-project\\node_modules\\ffmpeg-static\\ffmpeg.exe";
+  execSync(`"${ffmpegPath}" -f concat -safe 0 -i concat.txt -c copy narration_synced.wav -y`, { stdio: 'inherit' });
+  console.log("Audio concatenated to narration_synced.wav");
+}
+
+run();

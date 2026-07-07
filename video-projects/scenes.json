@@ -1,0 +1,32 @@
+[
+    {
+        "headline": "The Game Boy Camera is Back",
+        "subtitle": "The coolest crossover between 1990s nostalgia and modern Android technology.",
+        "color": "#f43f5e",
+        "animation": "fade_in_up"
+    },
+    {
+        "headline": "What is Flashback?",
+        "subtitle": "Epilogue launches a new app to interface directly with the original 1998 hardware.",
+        "color": "#8b5cf6",
+        "animation": "slide_in_right"
+    },
+    {
+        "headline": "How It Works",
+        "subtitle": "Plug your Camera into the GB Operator and see the live 2-bit viewfinder on your AMOLED screen.",
+        "color": "#10b981",
+        "animation": "zoom_in"
+    },
+    {
+        "headline": "Modernizing the Workflow",
+        "subtitle": "Scale images up cleanly without blurring, swap color palettes, and share instantly.",
+        "color": "#3b82f6",
+        "animation": "slide_in_left"
+    },
+    {
+        "headline": "The Power of Android",
+        "subtitle": "Breathing new life into 25-year-old hardware. Download the Flashback app and start shooting!",
+        "color": "#f59e0b",
+        "animation": "fade_in_up"
+    }
+]
