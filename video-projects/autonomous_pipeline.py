@@ -150,36 +150,39 @@ def main():
     gemini_key = os.environ.get("GEMINI_API_KEY")
     raw_img_path = "temp_raw_image.jpg"
     
-    if gemini_key and genai:
-        print("GEMINI_API_KEY found! Generating AI script and background...")
+    if gemini_key:
+        print("GEMINI_API_KEY found! Generating AI script and background via REST API...")
         try:
-            client = genai.Client(api_key=gemini_key)
             prompt = f"You are an expert YouTube Shorts scriptwriter. Write a 30-second punchy, high-retention script based on this news. DO NOT include any formatting, camera directions, or brackets. Only write the exact words that should be spoken out loud. Start with a strong hook.\nTitle: {title}\nSummary: {feed_summary}\nDescription: {article_desc}"
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-            )
-            if response.text:
-                script_text = response.text.strip()
+            
+            # Text Generation (Gemini)
+            text_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+            text_payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            res = requests.post(text_url, json=text_payload)
+            res.raise_for_status()
+            data = res.json()
+            if "candidates" in data:
+                script_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
                 print("Generated Script:", script_text)
             
-            # Generate Background Image
+            # Generate Background Image (Imagen)
             img_prompt = f"A highly engaging, high quality, colorful YouTube Shorts background related to this tech news, with NO text, abstract or literal: {title}"
             print("Generating custom AI background...")
-            img_result = client.models.generate_images(
-                model='gemini-3.1-flash-image',
-                prompt=img_prompt,
-                config=dict(
-                    number_of_images=1,
-                    output_mime_type="image/jpeg",
-                    aspect_ratio="9:16"
-                )
-            )
-            raw_img_path = "temp_raw_image.jpg"
-            for generated_image in img_result.generated_images:
-                image = Image.open(io.BytesIO(generated_image.image.image_bytes))
-                image.save(raw_img_path)
-                break
+            img_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={gemini_key}"
+            img_payload = {
+                "instances": [{"prompt": img_prompt}],
+                "parameters": {"sampleCount": 1, "aspectRatio": "9:16", "outputOptions": {"mimeType": "image/jpeg"}}
+            }
+            res_img = requests.post(img_url, json=img_payload)
+            res_img.raise_for_status()
+            img_data = res_img.json()
+            if "predictions" in img_data:
+                import base64
+                img_bytes = base64.b64decode(img_data["predictions"][0]["bytesBase64Encoded"])
+                with open(raw_img_path, "wb") as f:
+                    f.write(img_bytes)
+            else:
+                raise Exception("No predictions returned")
         except Exception as e:
             print(f"Gemini AI generation failed: {e}. Falling back to standard mode.")
             download_image(image_url, raw_img_path)
