@@ -108,8 +108,8 @@ def render_short(image_path, audio_path, output_path):
 async def generate_audio(text, output_path):
     print("Generating audio via Edge-TTS...")
     try:
-        voice = "en-US-GuyNeural"
-        communicate = edge_tts.Communicate(text, voice, rate="+10%")
+        voice = "en-US-ChristopherNeural"
+        communicate = edge_tts.Communicate(text, voice, rate="+15%", pitch="+5Hz")
         await communicate.save(output_path)
     except Exception as e:
         print(f"Edge-TTS failed ({e}), falling back to gTTS...")
@@ -166,7 +166,7 @@ def main():
                 print("Generated Script:", script_text)
             
             # Generate Background Image (Imagen)
-            img_prompt = f"A highly engaging, high quality, colorful YouTube Shorts background related to this tech news, with NO text, abstract or literal: {title}"
+            img_prompt = f"A hyper-realistic, dramatic, cyberpunk-style YouTube Shorts background related to this tech news. High contrast, glowing neon lights, cinematic lighting, highly detailed. NO text. Theme: {title}"
             print("Generating custom AI background...")
             img_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={gemini_key}"
             img_payload = {
