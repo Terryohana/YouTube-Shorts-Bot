@@ -11,6 +11,8 @@ from bs4 import BeautifulSoup
 import feedparser
 from moviepy.editor import ImageClip, AudioFileClip
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import edge_tts
+import asyncio
 
 WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 VIDEO_PROJ = WORKSPACE
@@ -254,6 +256,19 @@ def overlay_headline_on_image(image_path, headline, output_path):
 # VIDEO RENDERING
 # ──────────────────────────────────────────────
 
+async def fallback_generate_audio(text, output_path):
+    print("Generating audio via Edge-TTS (fallback)...")
+    try:
+        voice = "en-US-ChristopherNeural"
+        communicate = edge_tts.Communicate(text, voice, rate="+15%", pitch="+5Hz")
+        await communicate.save(output_path)
+    except Exception as e:
+        print(f"Edge-TTS failed ({e}), falling back to gTTS...")
+        from gtts import gTTS
+        tts = gTTS(text=text, lang='en', tld='us')
+        tts.save(output_path)
+
+
 def render_short(image_path, audio_path, output_path):
     print("Rendering video...")
     audio_clip = AudioFileClip(audio_path)
@@ -338,20 +353,16 @@ def main():
         try:
             audio_path = gemini_generate_tts(gemini_key, script_text, audio_path)
         except Exception as e:
-            print(f"Gemini TTS failed: {e}. Falling back to gTTS.")
+            print(f"Gemini TTS failed: {e}. Falling back to old TTS implementation.")
             audio_path = "temp_autonomous_audio.mp3"
-            from gtts import gTTS
-            tts = gTTS(text=script_text, lang='en', tld='us')
-            tts.save(audio_path)
+            asyncio.run(fallback_generate_audio(script_text, audio_path))
     else:
         print("No GEMINI_API_KEY - using basic mode")
         download_image(image_url, raw_img_path)
         img = Image.open(raw_img_path).convert("RGB").resize((1080, 1920), Image.LANCZOS)
         img.save(final_img_path, quality=95)
         audio_path = "temp_autonomous_audio.mp3"
-        from gtts import gTTS
-        tts = gTTS(text=script_text, lang='en', tld='us')
-        tts.save(audio_path)
+        asyncio.run(fallback_generate_audio(script_text, audio_path))
     
     # 3. Render Video
     video_path = "autonomous_short.mp4"
