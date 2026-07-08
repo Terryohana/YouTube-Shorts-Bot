@@ -148,13 +148,15 @@ def main():
     script_text = f"Did you know? {title}. {article_desc} {feed_summary[:150]}... Check the link for more! Don't forget to Subscribe!"
     
     gemini_key = os.environ.get("GEMINI_API_KEY")
+    raw_img_path = "temp_raw_image.jpg"
+    
     if gemini_key and genai:
         print("GEMINI_API_KEY found! Generating AI script and background...")
         try:
             client = genai.Client(api_key=gemini_key)
             prompt = f"You are an expert YouTube Shorts scriptwriter. Write a 30-second punchy, high-retention script based on this news. DO NOT include any formatting, camera directions, or brackets. Only write the exact words that should be spoken out loud. Start with a strong hook.\nTitle: {title}\nSummary: {feed_summary}\nDescription: {article_desc}"
             response = client.models.generate_content(
-                model='gemini-1.5-flash',
+                model='gemini-1.5-flash-latest',
                 contents=prompt,
             )
             if response.text:
@@ -183,7 +185,6 @@ def main():
             download_image(image_url, raw_img_path)
     else:
         print(f"Fallback Script: {script_text}")
-        raw_img_path = "temp_raw_image.jpg"
         download_image(image_url, raw_img_path)
     
     # 4. Generate Audio
