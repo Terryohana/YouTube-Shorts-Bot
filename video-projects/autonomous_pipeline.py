@@ -3,23 +3,19 @@ import sys
 import json
 import requests
 import time
-import asyncio
+import base64
+import struct
+import wave
+import textwrap
 from bs4 import BeautifulSoup
 import feedparser
-import edge_tts
 from moviepy.editor import ImageClip, AudioFileClip
-from PIL import Image
-import io
-
-try:
-    from google import genai
-    from google.genai import types
-except ImportError:
-    genai = None
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 VIDEO_PROJ = WORKSPACE
 UPLOAD_SCRIPT = os.path.join(WORKSPACE, "..", ".agents", "skills", "youtube-uploader", "scripts", "upload.py")
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 def clean_text(html_text):
     soup = BeautifulSoup(html_text, "html.parser")
@@ -32,7 +28,6 @@ def get_top_topic():
     res.raise_for_status()
     feed = feedparser.parse(res.text)
     
-    # Check if there is an unused topic file
     used_topics = []
     used_file = os.path.join(VIDEO_PROJ, "used_topics.json")
     if os.path.exists(used_file):
@@ -55,12 +50,10 @@ def get_article_data(url):
         res.raise_for_status()
         soup = BeautifulSoup(res.text, "html.parser")
         
-        # Try to get OG Image
         og_img = soup.find("meta", property="og:image")
         if og_img:
             image_url = og_img["content"]
             
-        # Try to get meta description for a short script
         og_desc = soup.find("meta", property="og:description")
         if og_desc:
             desc = og_desc["content"]
@@ -76,20 +69,197 @@ def download_image(url, output_path):
     with open(output_path, "wb") as f:
         f.write(res.content)
 
+# ──────────────────────────────────────────────
+# GEMINI API HELPERS
+# ──────────────────────────────────────────────
+
+def gemini_generate_script(api_key, title, feed_summary, article_desc):
+    """Use Gemini 2.5 Flash to write a punchy script AND a short headline."""
+    print("Generating AI script via Gemini 2.5 Flash...")
+    prompt = (
+        "You are an expert YouTube Shorts scriptwriter for a tech news channel.\n"
+        "Based on the following news article, generate TWO things:\n"
+        "1. HEADLINE: A short, punchy, clickbait-style headline (3-6 words, ALL CAPS) for the thumbnail.\n"
+        "2. SCRIPT: A 30-second high-retention voiceover script. Start with a strong hook. "
+        "DO NOT include formatting, camera directions, brackets, or asterisks. "
+        "Only write the exact words to be spoken.\n\n"
+        "Respond in this exact format:\n"
+        "HEADLINE: <your headline>\n"
+        "SCRIPT: <your script>\n\n"
+        f"Title: {title}\nSummary: {feed_summary}\nDescription: {article_desc}"
+    )
+    url = f"{GEMINI_API_BASE}/gemini-2.5-flash:generateContent?key={api_key}"
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    res = requests.post(url, json=payload, timeout=60)
+    res.raise_for_status()
+    data = res.json()
+    
+    text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    
+    headline = title.upper()[:40]
+    script = text
+    
+    # Parse HEADLINE: and SCRIPT: format
+    if "HEADLINE:" in text and "SCRIPT:" in text:
+        parts = text.split("SCRIPT:")
+        headline_part = parts[0]
+        script = parts[1].strip()
+        headline = headline_part.replace("HEADLINE:", "").strip().strip('"').upper()
+    
+    print(f"Headline: {headline}")
+    print(f"Script: {script[:200]}...")
+    return headline, script
+
+
+def gemini_generate_image(api_key, title, output_path):
+    """Use Gemini 2.5 Flash Image model to generate a cyberpunk background."""
+    print("Generating AI background via Gemini Image model...")
+    img_prompt = (
+        f"Generate a dramatic, hyper-realistic, cyberpunk-style vertical background image "
+        f"for a YouTube Short about: {title}. "
+        f"Dark tones with glowing neon accents (blue, green, red). "
+        f"Cinematic lighting, high contrast, tech-themed elements. "
+        f"Do NOT include any text or words in the image. "
+        f"Aspect ratio 9:16, portrait orientation."
+    )
+    url = f"{GEMINI_API_BASE}/gemini-2.5-flash-image:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": img_prompt}]}],
+        "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]}
+    }
+    res = requests.post(url, json=payload, timeout=120)
+    res.raise_for_status()
+    data = res.json()
+    
+    for part in data.get("candidates", [{}])[0].get("content", {}).get("parts", []):
+        if "inlineData" in part:
+            img_bytes = base64.b64decode(part["inlineData"]["data"])
+            with open(output_path, "wb") as f:
+                f.write(img_bytes)
+            print(f"AI background saved ({len(img_bytes)} bytes)")
+            return True
+    
+    raise Exception("No image data in response")
+
+
+def gemini_generate_tts(api_key, script_text, output_path):
+    """Use Gemini 2.5 Flash TTS to generate high-quality voiceover."""
+    print("Generating AI voiceover via Gemini TTS...")
+    url = f"{GEMINI_API_BASE}/gemini-2.5-flash-preview-tts:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": script_text}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {
+                "voiceConfig": {
+                    "prebuiltVoiceConfig": {
+                        "voiceName": "Kore"
+                    }
+                }
+            }
+        }
+    }
+    res = requests.post(url, json=payload, timeout=120)
+    res.raise_for_status()
+    data = res.json()
+    
+    for part in data.get("candidates", [{}])[0].get("content", {}).get("parts", []):
+        if "inlineData" in part:
+            audio_bytes = base64.b64decode(part["inlineData"]["data"])
+            # Convert raw PCM (16-bit, 24kHz, mono) to WAV
+            wav_path = output_path.replace(".mp3", ".wav")
+            with wave.open(wav_path, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)  # 16-bit
+                wf.setframerate(24000)
+                wf.writeframes(audio_bytes)
+            print(f"AI voiceover saved ({len(audio_bytes)} bytes)")
+            return wav_path
+    
+    raise Exception("No audio data in response")
+
+
+# ──────────────────────────────────────────────
+# IMAGE COMPOSITING (text overlay like mq2.jpg)
+# ──────────────────────────────────────────────
+
+def overlay_headline_on_image(image_path, headline, output_path):
+    """Overlay bold headline text on the background image, cyberpunk style."""
+    print(f"Overlaying headline: {headline}")
+    img = Image.open(image_path).convert("RGBA")
+    img = img.resize((1080, 1920), Image.LANCZOS)
+    
+    # Create a semi-transparent dark gradient overlay for readability
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw_overlay = ImageDraw.Draw(overlay)
+    # Dark gradient from top
+    for y in range(400):
+        alpha = int(180 * (1 - y / 400))
+        draw_overlay.line([(0, y), (1080, y)], fill=(0, 0, 0, alpha))
+    # Dark gradient from bottom
+    for y in range(1520, 1920):
+        alpha = int(180 * ((y - 1520) / 400))
+        draw_overlay.line([(0, y), (1080, y)], fill=(0, 0, 0, alpha))
+    
+    img = Image.alpha_composite(img, overlay)
+    
+    # Try to use a bold font; fall back to default
+    font_size = 80
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+    except (OSError, IOError):
+        try:
+            font = ImageFont.truetype("arial.ttf", font_size)
+        except (OSError, IOError):
+            font = ImageFont.load_default()
+    
+    # Wrap text to fit width
+    draw = ImageDraw.Draw(img)
+    max_chars = 15
+    wrapped = textwrap.wrap(headline, width=max_chars)
+    
+    # Calculate total text block height
+    line_height = font_size + 20
+    total_height = len(wrapped) * line_height
+    y_start = (1920 - total_height) // 2 - 100  # Slightly above center
+    
+    for i, line in enumerate(wrapped):
+        # Get text bounding box for centering
+        bbox = draw.textbbox((0, 0), line, font=font)
+        text_width = bbox[2] - bbox[0]
+        x = (1080 - text_width) // 2
+        y = y_start + i * line_height
+        
+        # Draw text shadow/glow (multiple offsets for glow effect)
+        for offset in range(4, 0, -1):
+            glow_alpha = 60 + (4 - offset) * 30
+            draw.text((x - offset, y + offset), line, font=font, fill=(0, 200, 255, glow_alpha))
+            draw.text((x + offset, y + offset), line, font=font, fill=(0, 200, 255, glow_alpha))
+        
+        # Draw black outline
+        for ox in [-2, -1, 0, 1, 2]:
+            for oy in [-2, -1, 0, 1, 2]:
+                draw.text((x + ox, y + oy), line, font=font, fill=(0, 0, 0, 255))
+        
+        # Draw main white text
+        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
+    
+    # Save as RGB for video
+    img_rgb = img.convert("RGB")
+    img_rgb.save(output_path, quality=95)
+    print("Headline overlay complete")
+
+
+# ──────────────────────────────────────────────
+# VIDEO RENDERING
+# ──────────────────────────────────────────────
+
 def render_short(image_path, audio_path, output_path):
     print("Rendering video...")
-    # Resize and blur background to fill vertical shorts format
-    img = Image.open(image_path).convert("RGB")
-    bg = img.resize((1080, 1920), Image.LANCZOS)
-    
-    # Create simple overlay
-    temp_img = os.path.join(VIDEO_PROJ, "temp_autonomous_img.jpg")
-    bg.save(temp_img, quality=95)
-    
     audio_clip = AudioFileClip(audio_path)
     duration = audio_clip.duration + 0.5
     
-    image_clip = ImageClip(temp_img).set_duration(duration)
+    image_clip = ImageClip(image_path).set_duration(duration)
     video_clip = image_clip.set_audio(audio_clip)
     
     video_clip.write_videofile(
@@ -102,25 +272,17 @@ def render_short(image_path, audio_path, output_path):
     
     audio_clip.close()
     video_clip.close()
-    if os.path.exists(temp_img):
-        os.remove(temp_img)
 
-async def generate_audio(text, output_path):
-    print("Generating audio via Edge-TTS...")
-    try:
-        voice = "en-US-ChristopherNeural"
-        communicate = edge_tts.Communicate(text, voice, rate="+15%", pitch="+5Hz")
-        await communicate.save(output_path)
-    except Exception as e:
-        print(f"Edge-TTS failed ({e}), falling back to gTTS...")
-        from gtts import gTTS
-        tts = gTTS(text=text, lang='en', tld='us')
-        tts.save(output_path)
 
 def upload_video(video_path, title, description):
     print("Uploading to YouTube...")
     cmd = f'python "{UPLOAD_SCRIPT}" --file "{video_path}" --title "{title} #Shorts" --description "{description}" --privacy public'
     os.system(cmd)
+
+
+# ──────────────────────────────────────────────
+# MAIN PIPELINE
+# ──────────────────────────────────────────────
 
 def main():
     os.chdir(VIDEO_PROJ)
@@ -130,81 +292,77 @@ def main():
     entry = get_top_topic()
     title = clean_text(entry.title)
     url = entry.link
-    
-    # Create script from feed summary
     feed_summary = clean_text(entry.summary)
     
-    # 2. Get high-res image
+    # 2. Get article data (image + description)
     image_url, article_desc = get_article_data(url)
-    
-    # Fallback to feed image if needed
     if not image_url and "media_content" in entry:
         image_url = entry.media_content[0]["url"]
-        
     if not image_url:
-        print("No image found! Using fallback generic image.")
         image_url = "https://images.unsplash.com/photo-1607252650355-f7fd0460ccdb?q=80&w=1080&auto=format&fit=crop"
-        
-    script_text = f"Did you know? {title}. {article_desc} {feed_summary[:150]}... Check the link for more! Don't forget to Subscribe!"
     
     gemini_key = os.environ.get("GEMINI_API_KEY")
     raw_img_path = "temp_raw_image.jpg"
+    final_img_path = "temp_final_image.jpg"
+    audio_path = "temp_autonomous_audio.wav"
+    headline = title.upper()[:40]
+    script_text = f"Did you know? {title}. {article_desc} {feed_summary[:150]}... Check the link for more! Don't forget to Subscribe!"
     
     if gemini_key:
-        print("GEMINI_API_KEY found! Generating AI script and background via REST API...")
+        print("=" * 50)
+        print("GEMINI API KEY FOUND - Using AI generation")
+        print("=" * 50)
+        
+        # Step A: Generate Script + Headline
         try:
-            prompt = f"You are an expert YouTube Shorts scriptwriter. Write a 30-second punchy, high-retention script based on this news. DO NOT include any formatting, camera directions, or brackets. Only write the exact words that should be spoken out loud. Start with a strong hook.\nTitle: {title}\nSummary: {feed_summary}\nDescription: {article_desc}"
-            
-            # Text Generation (Gemini)
-            text_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
-            text_payload = {"contents": [{"parts": [{"text": prompt}]}]}
-            res = requests.post(text_url, json=text_payload)
-            res.raise_for_status()
-            data = res.json()
-            if "candidates" in data:
-                script_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                print("Generated Script:", script_text)
-            
-            # Generate Background Image (Imagen)
-            img_prompt = f"A hyper-realistic, dramatic, cyberpunk-style YouTube Shorts background related to this tech news. High contrast, glowing neon lights, cinematic lighting, highly detailed. NO text. Theme: {title}"
-            print("Generating custom AI background...")
-            img_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={gemini_key}"
-            img_payload = {
-                "instances": [{"prompt": img_prompt}],
-                "parameters": {"sampleCount": 1, "aspectRatio": "9:16", "outputOptions": {"mimeType": "image/jpeg"}}
-            }
-            res_img = requests.post(img_url, json=img_payload)
-            res_img.raise_for_status()
-            img_data = res_img.json()
-            if "predictions" in img_data:
-                import base64
-                img_bytes = base64.b64decode(img_data["predictions"][0]["bytesBase64Encoded"])
-                with open(raw_img_path, "wb") as f:
-                    f.write(img_bytes)
-            else:
-                raise Exception("No predictions returned")
+            headline, script_text = gemini_generate_script(gemini_key, title, feed_summary, article_desc)
         except Exception as e:
-            print(f"Gemini AI generation failed: {e}. Falling back to standard mode.")
+            print(f"Script generation failed: {e}")
+        
+        # Step B: Generate Background Image
+        try:
+            gemini_generate_image(gemini_key, title, raw_img_path)
+        except Exception as e:
+            print(f"Image generation failed: {e}. Using article image.")
             download_image(image_url, raw_img_path)
+        
+        # Step C: Overlay headline text on the image
+        try:
+            overlay_headline_on_image(raw_img_path, headline, final_img_path)
+        except Exception as e:
+            print(f"Headline overlay failed: {e}. Using raw image.")
+            img = Image.open(raw_img_path).convert("RGB").resize((1080, 1920), Image.LANCZOS)
+            img.save(final_img_path, quality=95)
+        
+        # Step D: Generate AI Voice
+        try:
+            audio_path = gemini_generate_tts(gemini_key, script_text, audio_path)
+        except Exception as e:
+            print(f"Gemini TTS failed: {e}. Falling back to gTTS.")
+            audio_path = "temp_autonomous_audio.mp3"
+            from gtts import gTTS
+            tts = gTTS(text=script_text, lang='en', tld='us')
+            tts.save(audio_path)
     else:
-        print(f"Fallback Script: {script_text}")
+        print("No GEMINI_API_KEY - using basic mode")
         download_image(image_url, raw_img_path)
+        img = Image.open(raw_img_path).convert("RGB").resize((1080, 1920), Image.LANCZOS)
+        img.save(final_img_path, quality=95)
+        audio_path = "temp_autonomous_audio.mp3"
+        from gtts import gTTS
+        tts = gTTS(text=script_text, lang='en', tld='us')
+        tts.save(audio_path)
     
-    # 4. Generate Audio
-    audio_path = "temp_autonomous_audio.mp3"
-    asyncio.run(generate_audio(script_text, audio_path))
-    
-    # 5. Render Video
+    # 3. Render Video
     video_path = "autonomous_short.mp4"
-    render_short(raw_img_path, audio_path, video_path)
+    render_short(final_img_path, audio_path, video_path)
     
-    # 6. Upload
+    # 4. Upload
     desc = f"{article_desc}\n\nFull article: {url}\n\n#Android #TechNews #Shorts"
-    # Ensure title is under 100 chars
     safe_title = title[:80]
     upload_video(video_path, safe_title, desc)
     
-    # 7. Mark as used
+    # 5. Mark as used
     used_file = "used_topics.json"
     used_topics = []
     if os.path.exists(used_file):
@@ -215,9 +373,9 @@ def main():
         json.dump(used_topics, f)
         
     # Cleanup
-    for f in [raw_img_path, audio_path]:
-        if os.path.exists(f):
-            os.remove(f)
+    for fpath in [raw_img_path, final_img_path, audio_path]:
+        if os.path.exists(fpath):
+            os.remove(fpath)
             
     print("Pipeline complete!")
 
