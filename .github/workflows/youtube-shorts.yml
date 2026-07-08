@@ -40,6 +40,8 @@ jobs:
           echo "$GOOGLE_TOKEN_PICKLE_BASE64" | base64 --decode > .agents/skills/youtube-uploader/credentials/token.pickle
 
       - name: Run Pipeline
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           cd video-projects
           python autonomous_pipeline.py

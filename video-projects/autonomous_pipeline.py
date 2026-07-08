@@ -9,6 +9,13 @@ import feedparser
 import edge_tts
 from moviepy.editor import ImageClip, AudioFileClip
 from PIL import Image
+import io
+
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:
+    genai = None
 
 WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 VIDEO_PROJ = WORKSPACE
@@ -139,11 +146,45 @@ def main():
         image_url = "https://images.unsplash.com/photo-1607252650355-f7fd0460ccdb?q=80&w=1080&auto=format&fit=crop"
         
     script_text = f"Did you know? {title}. {article_desc} {feed_summary[:150]}... Check the link for more! Don't forget to Subscribe!"
-    print(f"Script: {script_text}")
     
-    # 3. Download image
-    raw_img_path = "temp_raw_image.jpg"
-    download_image(image_url, raw_img_path)
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_key and genai:
+        print("GEMINI_API_KEY found! Generating AI script and background...")
+        try:
+            client = genai.Client(api_key=gemini_key)
+            prompt = f"You are an expert YouTube Shorts scriptwriter. Write a 30-second punchy, high-retention script based on this news. DO NOT include any formatting, camera directions, or brackets. Only write the exact words that should be spoken out loud. Start with a strong hook.\nTitle: {title}\nSummary: {feed_summary}\nDescription: {article_desc}"
+            response = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents=prompt,
+            )
+            if response.text:
+                script_text = response.text.strip()
+                print("Generated Script:", script_text)
+            
+            # Generate Background Image
+            img_prompt = f"A highly engaging, high quality, colorful YouTube Shorts background related to this tech news, with NO text, abstract or literal: {title}"
+            print("Generating custom AI background...")
+            img_result = client.models.generate_images(
+                model='imagen-3.0-generate-002',
+                prompt=img_prompt,
+                config=dict(
+                    number_of_images=1,
+                    output_mime_type="image/jpeg",
+                    aspect_ratio="9:16"
+                )
+            )
+            raw_img_path = "temp_raw_image.jpg"
+            for generated_image in img_result.generated_images:
+                image = Image.open(io.BytesIO(generated_image.image.image_bytes))
+                image.save(raw_img_path)
+                break
+        except Exception as e:
+            print(f"Gemini AI generation failed: {e}. Falling back to standard mode.")
+            download_image(image_url, raw_img_path)
+    else:
+        print(f"Fallback Script: {script_text}")
+        raw_img_path = "temp_raw_image.jpg"
+        download_image(image_url, raw_img_path)
     
     # 4. Generate Audio
     audio_path = "temp_autonomous_audio.mp3"
