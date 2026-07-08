@@ -156,7 +156,7 @@ def main():
             client = genai.Client(api_key=gemini_key)
             prompt = f"You are an expert YouTube Shorts scriptwriter. Write a 30-second punchy, high-retention script based on this news. DO NOT include any formatting, camera directions, or brackets. Only write the exact words that should be spoken out loud. Start with a strong hook.\nTitle: {title}\nSummary: {feed_summary}\nDescription: {article_desc}"
             response = client.models.generate_content(
-                model='gemini-1.5-flash-latest',
+                model='gemini-2.5-flash',
                 contents=prompt,
             )
             if response.text:
@@ -167,7 +167,7 @@ def main():
             img_prompt = f"A highly engaging, high quality, colorful YouTube Shorts background related to this tech news, with NO text, abstract or literal: {title}"
             print("Generating custom AI background...")
             img_result = client.models.generate_images(
-                model='imagen-3.0-generate-002',
+                model='gemini-3.1-flash-image',
                 prompt=img_prompt,
                 config=dict(
                     number_of_images=1,
