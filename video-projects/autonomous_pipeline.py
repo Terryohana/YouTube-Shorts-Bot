@@ -24,23 +24,45 @@ def clean_text(html_text):
     return soup.get_text(separator=' ').strip()
 
 def get_top_topic():
-    print("Fetching RSS from Android Police...")
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"}
-    res = requests.get("https://www.androidpolice.com/feed/", headers=headers, timeout=10)
-    res.raise_for_status()
-    feed = feedparser.parse(res.text)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
+    }
+    feeds = [
+        "https://www.androidpolice.com/feed/",
+        "https://9to5google.com/feed/",
+        "https://www.theverge.com/android/rss/index.xml",
+        "https://techcrunch.com/category/mobile/feed/"
+    ]
     
     used_topics = []
     used_file = os.path.join(VIDEO_PROJ, "used_topics.json")
     if os.path.exists(used_file):
         with open(used_file, "r") as f:
             used_topics = json.load(f)
+
+    for feed_url in feeds:
+        print(f"Fetching RSS from {feed_url}...")
+        try:
+            res = requests.get(feed_url, headers=headers, timeout=15)
+            res.raise_for_status()
+            feed = feedparser.parse(res.text)
             
-    for entry in feed.entries:
-        if entry.link not in used_topics:
-            return entry
+            if not feed.entries:
+                continue
+                
+            for entry in feed.entries:
+                if entry.link not in used_topics:
+                    print(f"Found new topic: {entry.title}")
+                    return entry
             
-    return feed.entries[0]
+            return feed.entries[0] # Fallback if all used
+        except Exception as e:
+            print(f"Failed to fetch {feed_url}: {e}")
+            continue
+            
+    raise Exception("All RSS feeds failed to load. Check network connection.")
 
 def get_article_data(url):
     print(f"Fetching full article: {url}")
