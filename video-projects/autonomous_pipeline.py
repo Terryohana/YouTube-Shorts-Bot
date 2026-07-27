@@ -208,68 +208,67 @@ def gemini_generate_tts(api_key, script_text, output_path):
 # ──────────────────────────────────────────────
 
 def overlay_headline_on_image(image_path, headline, output_path):
-    """Overlay bold headline text on the background image, cyberpunk style."""
+    """Drastically improved cyberpunk thumbnail overlay."""
     print(f"Overlaying headline: {headline}")
     img = Image.open(image_path).convert("RGBA")
+    
+    # 1. Resize to exact 9:16
     img = img.resize((1080, 1920), Image.LANCZOS)
     
-    # Create a semi-transparent dark gradient overlay for readability
-    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw_overlay = ImageDraw.Draw(overlay)
-    # Dark gradient from top
-    for y in range(400):
-        alpha = int(180 * (1 - y / 400))
-        draw_overlay.line([(0, y), (1080, y)], fill=(0, 0, 0, alpha))
-    # Dark gradient from bottom
-    for y in range(1520, 1920):
-        alpha = int(180 * ((y - 1520) / 400))
-        draw_overlay.line([(0, y), (1080, y)], fill=(0, 0, 0, alpha))
+    # 2. Darken the background significantly (60% black) so the neon text pops
+    dark_overlay = Image.new("RGBA", img.size, (0, 0, 0, 150))
+    img = Image.alpha_composite(img, dark_overlay)
     
-    img = Image.alpha_composite(img, overlay)
-    
-    # Try to use a bold font; fall back to default
-    font_size = 80
+    # 3. Setup massive, bold font
+    font_size = 140
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
     except (OSError, IOError):
         try:
-            font = ImageFont.truetype("arial.ttf", font_size)
+            font = ImageFont.truetype("arialbd.ttf", font_size)
         except (OSError, IOError):
             font = ImageFont.load_default()
     
-    # Wrap text to fit width
+    # 4. Wrap text very tightly (approx 2-3 words per line) for maximum impact
     draw = ImageDraw.Draw(img)
-    max_chars = 15
-    wrapped = textwrap.wrap(headline, width=max_chars)
+    wrapped = textwrap.wrap(headline, width=12)
     
-    # Calculate total text block height
-    line_height = font_size + 20
+    line_height = font_size + 30
     total_height = len(wrapped) * line_height
-    y_start = (1920 - total_height) // 2 - 100  # Slightly above center
+    y_start = (1920 - total_height) // 2 - 50 # Slightly above exact center
+    
+    # Cyberpunk Yellow
+    text_color = (255, 230, 0, 255)
+    shadow_color = (0, 0, 0, 255)
     
     for i, line in enumerate(wrapped):
-        # Get text bounding box for centering
         bbox = draw.textbbox((0, 0), line, font=font)
         text_width = bbox[2] - bbox[0]
         x = (1080 - text_width) // 2
         y = y_start + i * line_height
         
-        # Draw text shadow/glow (multiple offsets for glow effect)
-        for offset in range(4, 0, -1):
-            glow_alpha = 60 + (4 - offset) * 30
-            draw.text((x - offset, y + offset), line, font=font, fill=(0, 200, 255, glow_alpha))
-            draw.text((x + offset, y + offset), line, font=font, fill=(0, 200, 255, glow_alpha))
+        # Draw thick black outline (stroke)
+        thickness = 8
+        for ox in range(-thickness, thickness + 1, 2):
+            for oy in range(-thickness, thickness + 1, 2):
+                draw.text((x + ox, y + oy), line, font=font, fill=shadow_color)
+                
+        # Draw heavy drop shadow down and right
+        draw.text((x + 12, y + 15), line, font=font, fill=shadow_color)
+        draw.text((x + 15, y + 18), line, font=font, fill=shadow_color)
+        draw.text((x + 20, y + 25), line, font=font, fill=shadow_color)
         
-        # Draw black outline
-        for ox in [-2, -1, 0, 1, 2]:
-            for oy in [-2, -1, 0, 1, 2]:
-                draw.text((x + ox, y + oy), line, font=font, fill=(0, 0, 0, 255))
-        
-        # Draw main white text
-        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
+        # Draw main bright yellow text
+        draw.text((x, y), line, font=font, fill=text_color)
     
-    # Save as RGB for video
+    # Save as RGB
     img_rgb = img.convert("RGB")
+    
+    # Boost contrast of final image slightly for that premium punchy look
+    from PIL import ImageEnhance
+    enhancer = ImageEnhance.Contrast(img_rgb)
+    img_rgb = enhancer.enhance(1.2)
+    
     img_rgb.save(output_path, quality=95)
     print("Headline overlay complete")
 
