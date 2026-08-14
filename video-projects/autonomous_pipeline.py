@@ -219,19 +219,36 @@ def overlay_headline_on_image(image_path, headline, output_path):
     dark_overlay = Image.new("RGBA", img.size, (0, 0, 0, 150))
     img = Image.alpha_composite(img, dark_overlay)
     
-    # 3. Setup massive, bold font
+    # 3. Setup massive, bold font base
     font_size = 140
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
-    except (OSError, IOError):
+    def get_font(size):
         try:
-            font = ImageFont.truetype("arialbd.ttf", font_size)
+            return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
         except (OSError, IOError):
-            font = ImageFont.load_default()
+            try:
+                return ImageFont.truetype("arialbd.ttf", size)
+            except (OSError, IOError):
+                return ImageFont.load_default()
+                
+    font = get_font(font_size)
     
     # 4. Wrap text very tightly (approx 2-3 words per line) for maximum impact
     draw = ImageDraw.Draw(img)
     wrapped = textwrap.wrap(headline, width=12)
+    
+    # 5. Dynamically shrink the font if any line is wider than the image bounds (with padding)
+    max_allowed_width = 980 # 50px padding on each side (out of 1080)
+    while font_size > 40:
+        too_wide = False
+        for line in wrapped:
+            bbox = draw.textbbox((0, 0), line, font=font)
+            if (bbox[2] - bbox[0]) > max_allowed_width:
+                too_wide = True
+                break
+        if not too_wide:
+            break
+        font_size -= 5
+        font = get_font(font_size)
     
     line_height = font_size + 30
     total_height = len(wrapped) * line_height
