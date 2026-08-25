@@ -327,10 +327,22 @@ def render_short(image_path, audio_path, output_path):
     video_clip.close()
 
 
+import subprocess
+
 def upload_video(video_path, title, description):
     print("Uploading to YouTube...")
-    cmd = f'python "{UPLOAD_SCRIPT}" --file "{video_path}" --title "{title} #Shorts" --description "{description}" --privacy public'
-    os.system(cmd)
+    try:
+        subprocess.run([
+            "python", UPLOAD_SCRIPT,
+            "--file", video_path,
+            "--title", f"{title} #Shorts",
+            "--description", description,
+            "--privacy", "public"
+        ], check=True)
+        print("Upload successful!")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: Upload script failed with exit code {e.returncode}")
+        raise
 
 
 # ──────────────────────────────────────────────
